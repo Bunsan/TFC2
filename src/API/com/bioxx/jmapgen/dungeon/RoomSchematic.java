@@ -162,7 +162,11 @@ public class RoomSchematic extends Schematic
 					if(templateMap.get(s) == block.state || (meta == -1 && templateMap.get(s).getBlock() == block.state.getBlock()))
 					{
 						Block b = Block.getBlockFromName(blockString[0]);
-
+						if(b == null)
+						{
+							TFC.log.warn("Block not found for dungeon generation: "+blockString[0]);
+							break;
+						}
 						/*if((block.state.getBlock().getMaterial(block.state) == Material.WATER || block.state.getBlock().getMaterial(block.state) == Material.LAVA))
 						{
 							if(block.state.getBlock().getMetaFromState(block.state) != 0)
@@ -274,7 +278,7 @@ public class RoomSchematic extends Schematic
 		@Expose
 		private List<String> blockMap = new ArrayList<String>();
 
-		@SerializedName("floorY")
+		@SerializedName("floory")
 		@Expose
 		private Integer floorY = 0;
 
@@ -286,11 +290,11 @@ public class RoomSchematic extends Schematic
 		@Expose
 		private double weight = 1.0;
 
-		@SerializedName("roomType")
+		@SerializedName("roomtype")
 		@Expose
 		private String roomType = "normal";
 
-		@SerializedName("setPieceMap")
+		@SerializedName("setpiecemap")
 		@Expose
 		private List<String> setPieceMap = new ArrayList<String>();
 

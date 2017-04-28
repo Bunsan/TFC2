@@ -1,11 +1,9 @@
 package com.bioxx.tfc2.handlers.client;
 
 import java.awt.Color;
-import java.lang.reflect.Field;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.gui.GuiIngame;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.VertexBuffer;
@@ -17,30 +15,22 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.TextFormatting;
-import net.minecraft.world.chunk.Chunk;
 
 import net.minecraftforge.client.GuiIngameForge;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent.ElementType;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.relauncher.ReflectionHelper;
 
 import org.lwjgl.opengl.GL11;
 
 import com.bioxx.jmapgen.IslandMap;
 import com.bioxx.jmapgen.IslandParameters.Feature;
 import com.bioxx.jmapgen.Point;
-import com.bioxx.jmapgen.attributes.Attribute;
-import com.bioxx.jmapgen.attributes.CaveAttribute;
-import com.bioxx.jmapgen.attributes.OreAttribute;
-import com.bioxx.jmapgen.attributes.RiverAttribute;
 import com.bioxx.jmapgen.graph.Center;
-import com.bioxx.jmapgen.processing.CaveAttrNode;
-import com.bioxx.jmapgen.processing.OreAttrNode;
+import com.bioxx.jmapgen.graph.Center.Marker;
 import com.bioxx.tfc2.Core;
 import com.bioxx.tfc2.Reference;
-import com.bioxx.tfc2.api.types.Moisture;
-import com.bioxx.tfc2.core.FoodStatsTFC;
+import com.bioxx.tfc2.api.interfaces.IFoodStatsTFC;
 import com.bioxx.tfc2.core.PlayerInfo;
 import com.bioxx.tfc2.core.PlayerManagerTFC;
 import com.bioxx.tfc2.core.Timekeeper;
@@ -51,10 +41,6 @@ public class RenderOverlayHandler
 {
 	public static ResourceLocation tfcicons = new ResourceLocation(Reference.ModID, Reference.AssetPathGui + "icons.png");
 	private FontRenderer fontrenderer = null;
-
-	public int recordTimer;
-	private final Field _recordPlayingUpFor = ReflectionHelper.findField(GuiIngame.class, "recordPlayingUpFor", "field_73845_h");
-	private final Field _recordPlaying = ReflectionHelper.findField(GuiIngame.class, "recordPlaying", "field_73838_g");
 
 	@SubscribeEvent
 	public void render(RenderGameOverlayEvent.Pre event)
@@ -70,8 +56,8 @@ public class RenderOverlayHandler
 
 		ScaledResolution sr = event.getResolution();
 		Minecraft mc = Minecraft.getMinecraft();
-		EntityPlayer player = mc.thePlayer;
-		fontrenderer = mc.fontRendererObj;
+		EntityPlayer player = mc.player;
+		fontrenderer = mc.fontRenderer;
 
 		int healthRowHeight = sr.getScaledHeight() - 40;
 		int armorRowHeight = healthRowHeight - 10;
@@ -90,14 +76,14 @@ public class RenderOverlayHandler
 			this.drawTexturedModalRect(mid-91, healthRowHeight, 0, 10, (int) (90*percentHealth), 10);
 
 			//Draw Food and Water
-			FoodStatsTFC foodstats = Core.getPlayerFoodStats(player);
-			float foodLevel = foodstats.getFoodLevel();
+			IFoodStatsTFC foodstats = (IFoodStatsTFC)player.getFoodStats();
+			float foodLevel = player.getFoodStats().getFoodLevel();
 			//float preFoodLevel = foodstats.getPrevFoodLevel();
 
-			float waterLevel = foodstats.waterLevel;
+			float waterLevel = foodstats.getWaterLevel();
 
-			float percentFood = Math.min(foodLevel / foodstats.getMaxStomach(player), 1);
-			float percentWater = Math.min(waterLevel / foodstats.getMaxWater(player), 1);
+			float percentFood = Math.min(foodLevel / 20, 1);
+			float percentWater = Math.min(waterLevel / 20, 1);
 
 			GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
 			this.drawTexturedModalRect(mid+1, healthRowHeight, 0, 20, 90, 5);
@@ -116,7 +102,7 @@ public class RenderOverlayHandler
 			this.drawTexturedModalRect(mid+1, healthRowHeight+5, 90, 25, (int) (90*percentWater), 5);
 
 			//Draw Notifications
-			String healthString = (int) Math.min(player.getHealth(), maxHealth) + "/" + (int) maxHealth;
+			String healthString = ((int) Math.min(player.getHealth()*10, maxHealth*10))/10f + "/" + ((int) (maxHealth*10))/10f;
 			fontrenderer.drawString(healthString, mid-45-(fontrenderer.getStringWidth(healthString)/2), healthRowHeight+2, Color.white.getRGB());
 			//Removed during port
 			//if (player.getEntityAttribute(SharedMonsterAttributes.movementSpeed).getModifier(TFCAttributes.OVERBURDENED_UUID) != null)
@@ -198,27 +184,38 @@ public class RenderOverlayHandler
 	public void renderText(RenderGameOverlayEvent.Text event)
 	{
 		Minecraft mc = Minecraft.getMinecraft();
-		if(mc.theWorld.provider.getDimension() == 0 && WorldGen.getInstance() != null)
+		if(mc.world.provider.getDimension() == 0 && WorldGen.getInstance() != null && !mc.playerController.gameIsSurvivalOrAdventure())
 		{
-			int xM = ((int)(mc.thePlayer.posX) >> 12);
-			int zM = ((int)(mc.thePlayer.posZ) >> 12);
+			int xM = ((int)(mc.player.posX) >> 12);
+			int zM = ((int)(mc.player.posZ) >> 12);
 			IslandMap map = WorldGen.getInstance().getIslandMap(xM, zM);
-			Point islandCoord = new Point((int)(mc.thePlayer.posX), (int)(mc.thePlayer.posZ)).toIslandCoord();
-			BlockPos pos = new BlockPos((int)(mc.thePlayer.posX), 0, (int)(mc.thePlayer.posZ));
+			Point islandCoord = new Point((int)Math.floor(mc.player.posX), (int)Math.floor(mc.player.posZ)).toIslandCoord();
+			BlockPos pos = new BlockPos((int)(mc.player.posX), 0, (int)(mc.player.posZ));
 			Center hex = map.getClosestCenter(islandCoord);
-			event.getLeft().add(""+mc.theWorld.getWorldTime());
-			event.getLeft().add("Rain: "+WeatherManager.getInstance().getPreciptitation((int)mc.thePlayer.posX, (int)mc.thePlayer.posZ) +
-					" / "  + " / " + mc.theWorld.isRaining());
-			event.getLeft().add("Temp: " + WeatherManager.getInstance().getTemperature((int)mc.thePlayer.posX, (int)mc.thePlayer.posY, (int)mc.thePlayer.posZ)+"C");
+			event.getLeft().add(""+mc.world.getWorldTime());
+			event.getLeft().add("Rain: "+WeatherManager.getInstance().getPrecipitation((int)mc.player.posX, (int)mc.player.posZ) +
+					" / "  + " / " + mc.world.isRaining());
+			event.getLeft().add("Temp: " + WeatherManager.getInstance().getTemperature((int)mc.player.posX, (int)mc.player.posY, (int)mc.player.posZ)+"C");
 			event.getLeft().add("Date: " + Timekeeper.getInstance().getSeasonalPeriod() + " | Time: " + Timekeeper.getInstance().getClockTime());
 			event.getLeft().add(TextFormatting.BOLD+""+TextFormatting.YELLOW+"--------Hex--------");
 			event.getLeft().add("Index: "+hex.index);
+			if(hex.biome != null)
+				event.getLeft().add("Biome: "+hex.biome.name());
 			event.getLeft().add("Elevation: "+hex.getElevation()+" ("+map.convertHeightToMC(hex.getElevation())+")");
-			Chunk c = mc.theWorld.getChunkFromBlockCoords(pos);
-			int b = mc.theWorld.getChunkFromBlockCoords(pos).getBiomeArray()[(pos.getZ() & 0xF) << 4 | (pos.getX() & 0xF)] & 0xFF;
-			event.getLeft().add("Moisture: "+Moisture.fromVal(hex.getMoistureRaw()) + " | " + hex.getMoistureRaw() + " | " + b + " | " + (float)b / 255F);
-			event.getLeft().add("Island Coord: "+islandCoord.getX() + "," + islandCoord.getY());	
-			if(hex.hasAttribute(Attribute.Lake))
+			event.getLeft().add("Moisture: "+hex.getMoisture() + " | " + hex.getMoistureRaw());
+			event.getLeft().add("Island Coord: "+islandCoord.getX() + "," + islandCoord.getY());
+			event.getLeft().add("Markers: ");
+			for(Marker m : Marker.values())
+			{
+				if(hex.hasMarker(m))
+				{
+					event.getLeft().add("  *"+m.name());
+				}
+			}
+
+
+			//PrintImageMapCommand.drawMapImage((int)Math.floor(mc.player.posX), (int)Math.floor(mc.player.posZ), mc.world, "test2");
+			/*if(hex.hasAttribute(Attribute.Lake))
 				event.getLeft().add("IsLake");	
 			RiverAttribute attrib = (RiverAttribute)hex.getAttribute(Attribute.River);
 			if(attrib != null)
@@ -227,6 +224,13 @@ public class RenderOverlayHandler
 				event.getLeft().add("River: " + attrib.getRiver() + " | " + (attrib.upriver != null ?  attrib.upriver.size() : 0));	
 				if(attrib.upriver != null && attrib.getDownRiver() != null)
 					event.getLeft().add("Up :" + hex.getDirection(attrib.upriver.get(0)).toString() + " | Dn :" + hex.getDirection(attrib.getDownRiver()).toString());
+			}
+
+			LakeAttribute lattrib = (LakeAttribute)hex.getAttribute(Attribute.Lake);
+			if(lattrib != null)
+			{
+				event.getLeft().add(TextFormatting.BOLD+""+TextFormatting.YELLOW+"-------Lake-------");
+				event.getLeft().add("Border: "+lattrib.getBorderDistance());
 			}
 
 			CaveAttribute cattrib = (CaveAttribute)hex.getAttribute(Attribute.Cave);
@@ -254,7 +258,7 @@ public class RenderOverlayHandler
 						event.getLeft().add(n.getOreType());	
 					}
 				}
-			}
+			}*/
 
 			event.getRight().add(TextFormatting.BOLD+""+TextFormatting.YELLOW+"--Island Parmaters--");
 			event.getRight().add("*Moisture: "+map.getParams().getIslandMoisture());

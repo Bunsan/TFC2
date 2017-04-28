@@ -6,18 +6,19 @@ import net.minecraft.block.properties.IProperty;
 import net.minecraft.block.properties.PropertyEnum;
 import net.minecraft.block.state.BlockStateContainer;
 import net.minecraft.block.state.IBlockState;
-import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 
+import net.minecraftforge.common.EnumPlantType;
 import net.minecraftforge.common.IPlantable;
 
 import com.bioxx.tfc2.Core;
-import com.bioxx.tfc2.TFCBlocks;
 import com.bioxx.tfc2.api.interfaces.IGravityBlock;
+import com.bioxx.tfc2.api.interfaces.ISupportBlock;
 import com.bioxx.tfc2.api.types.StoneType;
+import com.bioxx.tfc2.core.TFCTabs;
 import com.bioxx.tfc2.core.TFC_Sounds;
 import com.bioxx.tfc2.entity.EntityFallingBlockTFC;
 
@@ -28,7 +29,7 @@ public class BlockDirt extends BlockCollapsible implements IGravityBlock
 	public BlockDirt()
 	{
 		super(Material.GROUND, META_PROPERTY);
-		this.setCreativeTab(CreativeTabs.BUILDING_BLOCKS);
+		this.setCreativeTab(TFCTabs.TFCBuilding);
 		setSoundType(SoundType.GROUND);
 		this.collapseType = CollapsibleType.Nature;
 	}
@@ -43,9 +44,8 @@ public class BlockDirt extends BlockCollapsible implements IGravityBlock
 		IBlockState plant = plantable.getPlant(world, pos.offset(direction));
 		net.minecraftforge.common.EnumPlantType plantType = plantable.getPlantType(world, pos.offset(direction));
 
-		if(plantable == TFCBlocks.Sapling)
+		if(plantType == EnumPlantType.Plains)
 			return true;
-
 		return false;
 	}
 
@@ -88,7 +88,7 @@ public class BlockDirt extends BlockCollapsible implements IGravityBlock
 	@Override
 	public boolean canBeSupportedBy(IBlockState myState, IBlockState otherState)
 	{
-		if(Core.isTerrain(otherState) && !Core.isSand(otherState))
+		if((Core.isTerrain(otherState) && !Core.isSand(otherState)) || otherState.getBlock() instanceof ISupportBlock)
 			return true;
 		return false;
 	}

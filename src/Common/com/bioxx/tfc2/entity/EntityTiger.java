@@ -79,7 +79,7 @@ public class EntityTiger extends EntityAnimal
 	protected void applyEntityAttributes()
 	{
 		super.applyEntityAttributes();
-		this.getEntityAttribute(SharedMonsterAttributes.MAX_HEALTH).setBaseValue(1000);//MaxHealth
+		this.getEntityAttribute(SharedMonsterAttributes.MAX_HEALTH).setBaseValue(40);//MaxHealth
 	}
 
 	/**
@@ -131,9 +131,9 @@ public class EntityTiger extends EntityAnimal
 	@Override
 	protected SoundEvent getAmbientSound ()
 	{
-		if(isChild() && worldObj.rand.nextInt(100) < 5)
+		if(isChild() && world.rand.nextInt(100) < 5)
 			return TFC_Sounds.BEARCUBCRY;
-		else if(worldObj.rand.nextInt(100) < 5)
+		else if(world.rand.nextInt(100) < 5)
 			return TFC_Sounds.BEARCRY;
 
 		return isChild() ? null : TFC_Sounds.BEARSAY;

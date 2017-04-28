@@ -24,8 +24,10 @@ import com.bioxx.jmapgen.pathfinding.PathFinder;
 import com.bioxx.jmapgen.processing.AnimalProcessor;
 import com.bioxx.jmapgen.processing.CaveProcessor;
 import com.bioxx.jmapgen.processing.OreProcessor;
+import com.bioxx.jmapgen.processing.PortalProcessor;
 import com.bioxx.tfc2.TFC;
-import com.bioxx.tfc2.api.util.Helper;
+import com.bioxx.tfc2.api.types.ClimateTemp;
+import com.bioxx.tfc2.api.types.Moisture;
 
 public class IslandMap 
 {
@@ -59,6 +61,7 @@ public class IslandMap
 	private CaveProcessor caves;
 	private OreProcessor ores;
 	private AnimalProcessor animalProc;
+	private PortalProcessor portalProc;
 
 	public IslandMap(int size, long s) 
 	{
@@ -74,6 +77,7 @@ public class IslandMap
 		caves = new CaveProcessor(this);
 		ores = new OreProcessor(this);
 		animalProc = new AnimalProcessor(this);
+		portalProc = new PortalProcessor(this);
 		dungeons = new Vector<Dungeon>();
 	}
 
@@ -191,6 +195,8 @@ public class IslandMap
 
 			createGorges();
 
+			createMesas();
+
 			// Determine downslope paths.
 			calculateDownslopesCenter();
 			// Create rivers.
@@ -199,6 +205,7 @@ public class IslandMap
 			assignSlopedNoise();
 			assignHillyNoise();
 			createSpires();
+			createClearings();
 			calculateDownslopesCenter();
 		}
 		else
@@ -213,7 +220,7 @@ public class IslandMap
 		}
 
 		assignMoisture();
-		redistributeMoisture(getLandCenters());
+		//redistributeMoisture(getLandCenters());
 		assignMoisturePostRedist();
 
 		setupBiomeInfo();
@@ -221,14 +228,9 @@ public class IslandMap
 		caves.generate();
 		ores.generate();
 
-		//Generate Dungeons
 		if(!this.getParams().hasFeature(Feature.NoLand))
 		{
-			createPortals();
-			/*Dungeon d = new Dungeon();
-			Vector<Center> dungeonCenters = this.getCentersAbove(0.4);
-			d.generate(seed, dungeonCenters.get(this.mapRandom.nextInt(dungeonCenters.size())));
-			dungeons.add(d);*/
+			portalProc.generate();
 		}
 
 		animalProc.generate();
@@ -254,18 +256,54 @@ public class IslandMap
 		Vector<Center> land = this.getLandCenters();
 		Vector<Center> starts = new Vector<Center>();
 
-		for(int i = 0; i < 100; i++)
+		for(int i = 0; i < 20; i++)
 		{
 			Center c = land.get(this.mapRandom.nextInt(land.size()));
-			if(c.hasAttribute(Attribute.River) || c.hasAnyMarkersOf(Marker.Water, Marker.Pond, Marker.Coast))
+			LinkedList<Center> queue = new LinkedList<Center>();
+			queue.add(c);
+			int count = 1;
+			while(!queue.isEmpty())
 			{
-				i--;
-				continue;
+				c = queue.pop();
+				if((count < 20 && this.mapRandom.nextFloat() < 0.6) || count > 50)
+					continue;
+
+				if(c.hasAttribute(Attribute.River) || c.hasAnyMarkersOf(Marker.Water, Marker.Pond, Marker.Coast))
+				{
+					continue;
+				}
+				count++;
+				if(mapRandom.nextBoolean())
+					c.setMarkers(Marker.Spire);
+				for(Center n : c.neighbors)
+					if(!n.hasMarker(Marker.Spire))
+					{
+						queue.add(n);
+					}
 			}
-			//c.setElevation(Math.min(c.getElevation()+this.convertMCToHeight(mapRandom.nextInt(15) + 35), 1.0));
-			c.setMarkers(Marker.Spire);
+
 		}
 
+	}
+
+	private void createMesas()
+	{
+		if(!this.islandParams.hasFeature(Feature.Mesas))
+			return;
+
+		Vector<Center> landCenters = this.getLandCenters();
+		landCenters = this.filterOutMarkers(landCenters, Marker.SmallCrater, Marker.Volcano, Marker.Water, Marker.Coast);
+		landCenters = filterOutAttributes(landCenters, Attribute.Canyon, Attribute.Gorge);
+		for(int i = 0; i < 100; i++)
+		{
+			Center c = landCenters.get(mapRandom.nextInt(landCenters.size()));
+			double elev = 1 - c.elevation;
+			elev = c.elevation+((0.5+(mapRandom.nextDouble() * 0.3)) * elev);
+			c.setMarkers(Marker.Mesa);
+			c.setElevation(elev);
+			if(mapRandom.nextBoolean())
+				caves.gen(c.getRandomNeighbor(mapRandom), 1000+i, false, 2+mapRandom.nextInt(3));
+		}
 	}
 
 	private void createCanyons()
@@ -357,9 +395,29 @@ public class IslandMap
 						CanyonAttribute c = new CanyonAttribute(Attribute.Canyon, gn.nodeNum);
 						c.setDown(gn.getCenter());
 						if(n.addAttribute(c))
+						{
 							n.setElevation(Math.max(minElevation, gn.getCenter().getElevation()));
+							if(mapRandom.nextInt(5) == 0)
+								caves.gen(gn.getCenter(), 2000+i, false, 2+mapRandom.nextInt(3));
+						}
 					}
 				}
+			}
+		}
+	}
+
+	private void createClearings()
+	{
+		Vector<Center> landCenters = this.getLandCenters();
+		Vector<Center> wetCenters = new Vector<Center>();
+		for(Center c : landCenters)
+		{
+			if(mapRandom.nextInt(10) == 0)
+			{
+				c.setMarkers(Marker.Clearing);
+				for(Center n : c.neighbors)
+					if(mapRandom.nextBoolean())
+						n.setMarkers(Marker.Clearing);
 			}
 		}
 	}
@@ -481,13 +539,14 @@ public class IslandMap
 				if(valleyFinal.size() <= minSize || mapRandom.nextInt(1+valleyFinal.size()-minSize) == 0 )
 				{
 					//If we hit a lake center, then we just drop the entire lake into the valley.
-					if(c.hasMarker(Marker.Water) && !c.hasMarker(Marker.Ocean))
+					if(c.hasMarker(Marker.Water) && !c.hasAnyMarkersOf(Marker.Ocean, Marker.Pond))
 					{
 						Lake l = centerInExistingLake(c);
 						if(l != null && !lakesToDrop.contains(l))
 						{
 							lakesToDrop.add(l);
 						}
+						continue;
 					}
 					else if(c.hasMarker(Marker.Ocean)) continue;
 
@@ -507,14 +566,14 @@ public class IslandMap
 				//System.out.println("Valley: X" + mid.point.x + " Z"+ mid.point.y);
 				for(Center n : valleyFinal)
 				{
-					n.elevation = minElevation*0.8 + (-convertMCToHeight(2) + mapRandom.nextDouble()*convertMCToHeight(5));//Math.max(minElevation, n.elevation*0.8);
+					n.elevation = minElevation/**0.8*/ + (-convertMCToHeight(2) + mapRandom.nextDouble()*convertMCToHeight(5));//Math.max(minElevation, n.elevation*0.8);
 					n.setMarkers(Marker.Valley);
 				}
 				for(Lake l : lakesToDrop)
 				{
 					for(Center c : l.centers)
 					{
-						c.elevation = minElevation*0.79;
+						c.elevation = minElevation/**0.79*/;
 					}
 				}
 			}
@@ -600,53 +659,57 @@ public class IslandMap
 		}
 	}
 
-	private void createPortals()
+	public Vector<Center> filterKeepMarkers(Vector<Center> centers, Marker... markers)
 	{
-		Vector<Center> low = this.getCentersBelow(0.3, false);
-		Center temp = low.get(this.mapRandom.nextInt(low.size()));
-		while(true)
+		Vector<Center> out = new Vector<Center>();
+		for(Center c : centers)
 		{
-			if(temp.point.y < 2048 && temp.point.x > 256 && temp.point.x < 2304)
-			{
-				PortalAttribute pa = new PortalAttribute(Helper.combineCoords(this.islandParams.getXCoord(), this.islandParams.getZCoord()-1), EnumFacing.NORTH);
-				temp.addAttribute(pa);
-				break;
-			}
-			temp = low.get(this.mapRandom.nextInt(low.size()));
+			if(c.hasAnyMarkersOf(markers))
+				out.add(c);
 		}
+		return out;
+	}
 
-		while(true)
+	public Vector<Center> filterOutMarkers(Vector<Center> centers, Marker... markers)
+	{
+		Vector<Center> out = new Vector<Center>();
+		for(Center c : centers)
 		{
-			if(temp.point.y > 2048 && temp.point.x > 256 && temp.point.x < 2304)
-			{
-				PortalAttribute pa = new PortalAttribute(Helper.combineCoords(this.islandParams.getXCoord(), this.islandParams.getZCoord()-1), EnumFacing.SOUTH);
-				temp.addAttribute(pa);
-				break;
-			}
-			temp = low.get(this.mapRandom.nextInt(low.size()));
+			if(!c.hasAnyMarkersOf(markers))
+				out.add(c);
 		}
+		return out;
+	}
 
-		while(true)
+	public Vector<Center> filterOutAttributes(Vector<Center> centers, UUID... attr)
+	{
+		Vector<Center> out = new Vector<Center>();
+		for(Center c : centers)
 		{
-			if(temp.point.x > 2048 && temp.point.y > 256 && temp.point.y < 2304)
+			boolean keep = true;
+			for(UUID uuid : attr)
 			{
-				PortalAttribute pa = new PortalAttribute(Helper.combineCoords(this.islandParams.getXCoord(), this.islandParams.getZCoord()-1), EnumFacing.WEST);
-				temp.addAttribute(pa);
-				break;
+				if(c.hasAttribute(uuid))
+				{
+					keep = false;
+					break;
+				}
 			}
-			temp = low.get(this.mapRandom.nextInt(low.size()));
+			if(keep)
+				out.add(c);
 		}
+		return out;
+	}
 
-		while(true)
+	public Vector<Center> filterKeepCoords(Vector<Center> centers, Point pMin, Point pMax)
+	{
+		Vector<Center> out = new Vector<Center>();
+		for(Center c : centers)
 		{
-			if(temp.point.x < 2048 && temp.point.y > 256 && temp.point.y < 2304)
-			{
-				PortalAttribute pa = new PortalAttribute(Helper.combineCoords(this.islandParams.getXCoord(), this.islandParams.getZCoord()-1), EnumFacing.WEST);
-				temp.addAttribute(pa);
-				break;
-			}
-			temp = low.get(this.mapRandom.nextInt(low.size()));
+			if(c.point.x > pMin.x && c.point.y > pMin.y && c.point.x < pMax.x && c.point.y < pMax.y)
+				out.add(c);
 		}
+		return out;
 	}
 
 	public Center getHighestNeighbor(Center c)
@@ -797,7 +860,7 @@ public class IslandMap
 			}
 
 			if(center.hasMarker(Marker.CoastWater))
-				center.elevation = -0.01 - mapRandom.nextDouble()*0.03;
+				center.elevation = -0.04/* - mapRandom.nextDouble()*0.03*/;
 			else if(center.hasMarker(Marker.Ocean))
 				center.elevation = -0.1 - mapRandom.nextDouble()*0.25;
 
@@ -1086,7 +1149,7 @@ public class IslandMap
 		{
 			if(!inside(c.point))
 			{
-				c.setMarkers(Marker.Water);
+				c.setMarkers(Marker.Water, Marker.Ocean);
 			}
 			else if(c.hasMarker(Marker.Border))
 				numLandBorder++;
@@ -1097,6 +1160,8 @@ public class IslandMap
 				queue.add(c);
 			}
 		}
+
+		assignLakes();
 
 		/**
 		 * Next we assign the borders to have 0 elevation and all other corners to have MAX_VALUE. We also add
@@ -1138,6 +1203,59 @@ public class IslandMap
 		}
 
 		return numLandBorder;
+	}
+
+	public void assignLakes()
+	{
+		int lakeCount = 5;//Number of distinct lakes to attempt to generate
+		int lakeSize = 160;//Size of lakes to generate
+
+		Moisture m = getParams().getIslandMoisture();
+
+		if(m.equals(Moisture.LOW))
+			lakeSize = 80;
+		else if(m.isGreaterThanOrEqual(Moisture.HIGH))
+			lakeSize = 240;
+
+		for(int lc = 0; lc < lakeCount; lc++)
+		{
+			int size = 0;
+			ArrayList<Corner> lakeTiles = new ArrayList<Corner>();
+			LinkedList<Corner> queue = new LinkedList<Corner>();
+			Corner startCorner = null;
+			while(startCorner == null)
+			{
+				Corner c = corners.get(this.mapRandom.nextInt(corners.size()));
+				if (!c.hasMarker(Marker.Water))
+					startCorner = c;
+			}
+			queue.add(corners.get(this.mapRandom.nextInt(corners.size())));
+
+			while(!queue.isEmpty())
+			{
+				Corner c = queue.pop();
+
+				if(mapRandom.nextInt(100) > 15 && !c.isShoreline() && !c.hasMarker(Marker.Water))
+				{
+					lakeTiles.add(c);
+					if(size < lakeSize)
+						queue.addAll(c.adjacent);
+					size++;
+				}
+			}
+
+			if(lakeTiles.size() < lakeSize / 3)
+			{
+				lc--;
+			}
+			else
+			{
+				for(Corner c : lakeTiles)
+				{
+					c.setMarkers(Marker.Water);
+				}
+			}
+		}
 	}
 
 	private void resetMap()
@@ -1247,6 +1365,78 @@ public class IslandMap
 		}
 	}
 
+	public void assignMoisture() 
+	{
+		LinkedList<Center> queue = new LinkedList<Center>();
+		// Fresh water
+		for(Center cr : centers)
+		{
+			RiverAttribute attrib = (RiverAttribute)cr.getAttribute(Attribute.River);
+			if ((cr.hasMarker(Marker.Water) || (attrib != null && attrib.getRiver() > 0)) && !cr.hasMarker(Marker.Ocean)) 
+			{
+				double rivermult = attrib != null ? attrib.getRiver() : 0;
+				cr.setMoistureRaw((attrib != null && attrib.getRiver() > 0) ? 1 : 1);
+				/*if(this.getParams().hasFeature(Feature.Desert))
+					cr.setMoistureRaw((Math.log10(cr.getMoistureRaw()*0.5)+2)/2);*/
+				queue.push(cr);
+			} 
+			else 
+			{
+				cr.setMoistureRaw(0.0);
+			}
+
+			if (cr.hasMarker(Marker.Ocean)) 
+			{
+				cr.setMoistureRaw(1.0);
+			}
+			if (cr.hasMarker(Marker.Coast)) 
+			{
+				cr.setMoistureRaw(Math.max(0.5, cr.getMoistureRaw()));
+			}
+		}
+		//This controls how far the moisture level spreads from the moisture source. Lower values cause less overall island moisture.
+		double moistureMult =  0.6+(0.2 * this.islandParams.getIslandMoisture().getMoisture());
+		double maxElev = islandParams.islandMaxHeight;
+
+
+		if(this.getParams().hasFeature(Feature.Desert))
+			moistureMult = (0.8 * moistureMult);
+
+
+		while (queue.size() > 0) 
+		{
+			Center q = queue.pop();
+
+			for(Center adjacent : q.neighbors)
+			{
+				double newMoisture = q.getMoistureRaw() * moistureMult;
+				double elevDiff = this.convertHeightToMC(adjacent.getElevation()) - this.convertHeightToMC(q.getElevation());
+				if(!islandParams.hasFeature(Feature.LowLand) && elevDiff > 0)
+				{
+					newMoisture = q.getMoistureRaw() * (moistureMult * (1-(elevDiff*2/maxElev)));
+				}
+
+				if (newMoisture > adjacent.getMoistureRaw()) 
+				{
+					adjacent.setMoistureRaw(newMoisture);
+					queue.push(adjacent);
+				}
+			}
+		}
+		// Salt water
+		/*for(Center cr : centers)
+		{
+			if (cr.hasMarker(Marker.Ocean)) 
+			{
+				cr.setMoistureRaw(1.0);
+			}
+			if (cr.hasMarker(Marker.Coast)) 
+			{
+				cr.setMoistureRaw(Math.max(0.5, cr.getMoistureRaw()));
+			}
+		}*/
+	}
+
 	// Change the overall distribution of moisture to be evenly distributed.	
 	public void redistributeMoisture(Vector<Center> locations) {
 		int i;
@@ -1262,31 +1452,17 @@ public class IslandMap
 		}
 	}
 
-	public void assignMoisture() 
+	public void assignMoisturePostRedist() 
 	{
 		LinkedList<Center> queue = new LinkedList<Center>();
 		// Fresh water
 		for(Center cr : centers)
 		{
-			RiverAttribute attrib = (RiverAttribute)cr.getAttribute(Attribute.River);
-			if ((cr.hasMarker(Marker.Water) || (attrib != null && attrib.getRiver() > 0)) && !cr.hasMarker(Marker.Ocean)) 
+			if (cr.hasMarker(Marker.Coast)) 
 			{
-				double rivermult = attrib != null ? attrib.getRiver() : 0;
-				cr.setMoistureRaw((attrib != null && attrib.getRiver() > 0) ? Math.min(3.0, (0.1 * rivermult)) : 1.0);
-				if(this.getParams().hasFeature(Feature.Desert))
-					cr.setMoistureRaw((Math.log10(cr.getMoistureRaw()*0.5)+2)/2);
 				queue.push(cr);
 			} 
-			else 
-			{
-				cr.setMoistureRaw(0.0);
-			}
 		}
-		//This controls how far the moisture level spreads from the moisture source. Lower values cause less overall island moisture.
-		double moistureMult = (0.6 * this.islandParams.getIslandMoisture().getMoisture());
-		/*if(this.getParams().hasFeature(Feature.Desert))
-			moistureMult = (float) ((Math.log10(1)+1)/1);*/
-
 
 		while (queue.size() > 0) 
 		{
@@ -1294,24 +1470,20 @@ public class IslandMap
 
 			for(Center adjacent : q.neighbors)
 			{
-				double newMoisture = q.getMoistureRaw() * moistureMult;
-				if (newMoisture > adjacent.getMoistureRaw()) 
+				if(!adjacent.hasMarker(Marker.Ocean) && adjacent.getElevation() - q.getElevation() < 0.08)
 				{
-					adjacent.setMoistureRaw(newMoisture);
-					queue.push(adjacent);
+					double moistureMult = Math.max(1 - adjacent.getElevation() / 0.25, 0);
+					double newMoisture = q.getMoistureRaw() * moistureMult;
+					if (newMoisture > adjacent.getMoistureRaw()) 
+					{
+						adjacent.setMoistureRaw(newMoisture);
+						queue.push(adjacent);
+					}
 				}
-			}
-		}
-		// Salt water
-		for(Center cr : centers)
-		{
-			if (cr.hasMarker(Marker.Ocean)) 
-			{
-				cr.setMoistureRaw(1.0);
-			}
-			if (cr.hasMarker(Marker.Coast)) 
-			{
-				cr.setMoistureRaw(Math.max(0.5, cr.getMoistureRaw()));
+				else if(adjacent.hasMarker(Marker.Ocean))
+				{
+					adjacent.setMoistureRaw(1.0);
+				}
 			}
 		}
 	}
@@ -1494,7 +1666,7 @@ public class IslandMap
 						LakeAttribute nAttrib = (LakeAttribute) n.getAttribute(Attribute.Lake);
 						if(nAttrib.getBorderDistance() < attrib.getBorderDistance())
 							attrib.setBorderDistance(nAttrib.getBorderDistance() + 1);
-						else if (nAttrib.getBorderDistance() > attrib.getBorderDistance())
+						else if (nAttrib.getBorderDistance() > attrib.getBorderDistance()+1)
 							nAttrib.setBorderDistance(attrib.getBorderDistance() + 1);
 					}
 					if(!n.hasMarker(Marker.Water))
@@ -1736,6 +1908,8 @@ public class IslandMap
 							a.setDown(cn.getDown().center);
 						a.gorgeID = id;
 						cn.center.addAttribute(a);
+						if(mapRandom.nextInt(6) == 0)
+							caves.gen(cn.center, 3000+id, false, 2+mapRandom.nextInt(3));
 					}
 				}
 			}
@@ -1797,7 +1971,17 @@ public class IslandMap
 			if(c.hasMarker(Marker.Valley))
 				continue;
 
-			possibleStarts.add(c);
+			boolean nextToWater = false;
+			for(Center n : c.neighbors)
+			{
+				if(n.hasMarker(Marker.Water))
+				{
+					nextToWater=true;
+					possibleStarts.add(n);
+				}
+			}
+			if(!nextToWater)
+				possibleStarts.add(c);
 		}
 
 
@@ -1818,11 +2002,15 @@ public class IslandMap
 
 		for (int i = 0; i < lakes.size(); i++) 
 		{
-			possibleStarts.add(lakes.get(i).lowestCenter);
-			for(Center cen : lakes.get(i).lowestCenter.neighbors)
+			Center lowest = lakes.get(i).lowestCenter;
+
+			for(Center cen : lowest.neighbors)
 			{
-				if(cen.hasMarker(Marker.Water) && mapRandom.nextBoolean())
-					possibleStarts.add(cen);
+				if(!cen.hasMarker(Marker.Water))
+				{
+					possibleStarts.add(lowest);
+					break;
+				}
 			}
 		}
 
@@ -1916,7 +2104,7 @@ public class IslandMap
 								break;
 							}
 						}
-						r.riverStart.center.setMarkers(Marker.Pond);
+						r.riverStart.center.setMarkers(Marker.Pond, Marker.Water);
 					}
 					else
 					{
@@ -2075,38 +2263,6 @@ public class IslandMap
 		return i/this.islandParams.islandMaxHeight;
 	}
 
-	public void assignMoisturePostRedist() 
-	{
-		LinkedList<Center> queue = new LinkedList<Center>();
-		// Fresh water
-		for(Center cr : centers)
-		{
-			if (cr.hasMarker(Marker.Coast)) 
-			{
-				queue.push(cr);
-			} 
-		}
-
-		while (queue.size() > 0) 
-		{
-			Center q = queue.pop();
-
-			for(Center adjacent : q.neighbors)
-			{
-				if(!adjacent.hasMarker(Marker.Ocean) && adjacent.getElevation() - q.getElevation() < 0.08)
-				{
-					double moistureMult = Math.max(1 - adjacent.getElevation() / 0.25, 0);
-					double newMoisture = q.getMoistureRaw() * moistureMult;
-					if (newMoisture > adjacent.getMoistureRaw()) 
-					{
-						adjacent.setMoistureRaw(newMoisture);
-						queue.push(adjacent);
-					}
-				}
-			}
-		}
-	}
-
 	/* Assign a biome type to each polygon. If it has
 	// ocean/coast/water, then that's the biome; otherwise it depends
 	// on low/high elevation and low/medium/high moisture. This is
@@ -2114,36 +2270,90 @@ public class IslandMap
 	// needs of the island map generator.*/
 	public BiomeType getBiome(Center p) 
 	{
+		ClimateTemp temp = getParams().getIslandTemp();
 		float m = p.getMoistureRaw();
 		m *= this.getParams().getIslandMoisture().getMoisture();
-		if (p.hasMarker(Marker.Ocean)) {
-			return BiomeType.OCEAN;
-		} else if (p.hasMarker(Marker.Water)) {
-			if (p.elevation < 0.1) return BiomeType.MARSH;
-			//if (p.elevation > 0.8) return BiomeType.ICE;
-			return BiomeType.LAKE;
-		} else if (p.hasMarker(Marker.Coast)) {
+		if (p.hasMarker(Marker.Ocean)) 
+		{
+			if(p.hasMarker(Marker.CoastWater))
+				return BiomeType.OCEAN;
+			else 
+				return BiomeType.DEEP_OCEAN;
+		} 
+		else if (p.hasMarker(Marker.Water)) 
+		{
+			if (p.elevation < 0.1) 
+				return BiomeType.MARSH;
+			if(p.hasAttribute(Attribute.Lake))
+			{
+				for(Center n : p.neighbors)
+					if(!n.hasMarker(Marker.Water))
+						return BiomeType.LAKESHORE;
+				return BiomeType.LAKE;
+			}
+			return BiomeType.POND;
+		} 
+		else if (p.hasMarker(Marker.Coast) && p.getElevation() < 0.035) 
+		{
 			return BiomeType.BEACH;
-		} else if (p.elevation > 0.8) {
-			if (m > 0.50) return BiomeType.SNOW;
-			else if (m > 0.33) return BiomeType.TUNDRA;
-			else if (m > 0.16) return BiomeType.BARE;
-			else return BiomeType.SCORCHED;
-		} else if (p.elevation > 0.6) {
-			if (m > 0.66) return BiomeType.TAIGA;
-			else if (m > 0.33) return BiomeType.SHRUBLAND;
-			else return BiomeType.TEMPERATE_DESERT;
-		} else if (p.elevation > 0.3) {
-			if (m > 0.83) return BiomeType.TEMPERATE_RAIN_FOREST;
-			else if (m > 0.50) return BiomeType.TEMPERATE_DECIDUOUS_FOREST;
-			else if (m > 0.16) return BiomeType.GRASSLAND;
-			else return BiomeType.TEMPERATE_DESERT;
-		} else {
-			if (m > 0.66) return BiomeType.TROPICAL_RAIN_FOREST;
-			else if (m > 0.33) return BiomeType.TROPICAL_SEASONAL_FOREST;
-			else if (m > 0.16) return BiomeType.GRASSLAND;
-			else return BiomeType.SUBTROPICAL_DESERT;
+		} 
+		else if(p.hasAttribute(Attribute.River))
+		{
+			return BiomeType.RIVER;
 		}
+		else if(getParams().hasFeature(Feature.Desert) && p.getMoisture().isLessThanOrEqual(Moisture.MEDIUM))
+		{
+			if(temp.equals(ClimateTemp.TEMPERATE))
+				return BiomeType.TEMPERATE_DESERT;
+			else if(temp.equals(ClimateTemp.SUBTROPICAL))
+				return BiomeType.SUBTROPICAL_DESERT;
+			else if(temp.equals(ClimateTemp.TROPICAL))
+				return BiomeType.TROPICAL_DESERT;
+			else if(temp.isCoolerThanOrEqual(ClimateTemp.SUBPOLAR))
+				return BiomeType.POLAR_DESERT;
+		}
+		else if(getParams().hasFeature(Feature.Desert))
+		{
+			return BiomeType.DRY_FOREST;
+		}
+		else if(temp.equals(ClimateTemp.POLAR))
+		{
+			if(p.getMoisture().isGreaterThanOrEqual(Moisture.VERYHIGH))
+				return BiomeType.TAIGA;
+			else if(p.getMoisture().isGreaterThanOrEqual(Moisture.MEDIUM))
+				return BiomeType.TUNDRA;
+			else return BiomeType.BARE;
+		}
+		else if(temp.equals(ClimateTemp.SUBPOLAR))
+		{
+			if(p.getMoisture().isGreaterThanOrEqual(Moisture.MEDIUM))
+				return BiomeType.TAIGA;
+			else if(p.getMoisture().isGreaterThanOrEqual(Moisture.LOW))
+				return BiomeType.TUNDRA;
+			else return BiomeType.BARE;
+		}
+		else if(temp.equals(ClimateTemp.TEMPERATE))
+		{
+			if(p.getMoisture().isGreaterThanOrEqual(Moisture.MEDIUM))
+				return BiomeType.DECIDUOUS_FOREST;
+			else if(p.getMoisture().isGreaterThanOrEqual(Moisture.LOW))
+				return BiomeType.SHRUBLAND;
+			else return BiomeType.GRASSLAND;
+		}
+		else if(temp.equals(ClimateTemp.SUBTROPICAL))
+		{
+			if(p.getMoisture().isGreaterThanOrEqual(Moisture.MEDIUM))
+				return BiomeType.RAIN_FOREST;
+			else return BiomeType.GRASSLAND;
+		}
+		else if(temp.equals(ClimateTemp.TROPICAL))
+		{
+			if(p.getMoisture().isGreaterThanOrEqual(Moisture.MEDIUM))
+				return BiomeType.RAIN_FOREST;
+			else return BiomeType.GRASSLAND;
+		}
+
+		return BiomeType.GRASSLAND;
 	}
 
 	// Look up a Voronoi Edge object given two adjacent Voronoi
@@ -2171,7 +2381,12 @@ public class IslandMap
 	// Determine whether a given point should be on the island or in the water.
 	public Boolean inside(Point p) 
 	{
-		return islandParams.insidePerlin(p);
+		return inside(p, true);
+	}
+
+	public Boolean inside(Point p, boolean clamp) 
+	{
+		return islandParams.insidePerlin(p, clamp);
 	}
 
 	double elevationBucket(Center p) 

@@ -1,30 +1,34 @@
 package com.bioxx.tfc2.containers;
 
+import javax.annotation.Nullable;
+
+import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.inventory.*;
 import net.minecraft.item.ItemArmor;
 import net.minecraft.item.ItemStack;
 
+import net.minecraftforge.common.ForgeHooks;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
+import com.bioxx.tfc2.api.crafting.CraftingManagerTFC;
 import com.bioxx.tfc2.api.interfaces.IFood;
+import com.bioxx.tfc2.containers.slots.SlotCraftingTFC;
 import com.bioxx.tfc2.core.Food;
 import com.bioxx.tfc2.core.PlayerInventory;
 
 public class ContainerPlayerTFC extends ContainerPlayer
 {
-	private final EntityPlayer thePlayer;
 
-	public ContainerPlayerTFC(InventoryPlayer playerInv, boolean par2, EntityPlayer player)
+	public ContainerPlayerTFC(InventoryPlayer playerInv, boolean par2, EntityPlayer playerIn)
 	{
-		super(playerInv, par2, player);
+		super(playerInv, par2, playerIn);
 		this.craftMatrix = new InventoryCrafting(this, 3, 3);
 		this.inventorySlots.clear();
 		this.inventoryItemStacks.clear();
-		this.thePlayer = player;
-		this.addSlotToContainer(new SlotCrafting(player, craftMatrix, craftResult, 0, 152, 36));
+		this.addSlotToContainer(new SlotCraftingTFC(player, craftMatrix, craftResult, 0, 152, 36));
 		int x;
 		int y;
 
@@ -34,14 +38,13 @@ public class ContainerPlayerTFC extends ContainerPlayer
 				this.addSlotToContainer(new Slot(craftMatrix, y + x * 3, 82 + y * 18, 18 + x * 18));
 		}
 
-		for (x = 0; x < playerInv.armorInventory.length; ++x)
+		for (x = 0; x < playerInv.armorInventory.size(); ++x)
 		{
-			int index = playerInv.getSizeInventory() - 1 - x;
+			int index = 36 +(3-x);
 			final int k = x;
-			final EntityEquipmentSlot ees = EntityEquipmentSlot.values()[EntityEquipmentSlot.FEET.ordinal()+k];
+			final EntityEquipmentSlot ees = VALID_EQUIPMENT_SLOTS[k];
 			this.addSlotToContainer(new Slot(playerInv, index, 8, 8 + x * 18)
 			{
-				private static final String __OBFID = "CL_00001755";
 				/**
 				 * Returns the maximum stack size for a given slot (usually the same as getInventoryStackLimit(), but 1
 				 * in the case of armor slots)
@@ -58,20 +61,29 @@ public class ContainerPlayerTFC extends ContainerPlayer
 				public boolean isItemValid(ItemStack stack)
 				{
 					if (stack == null) return false;
-					return stack.getItem().isValidArmor(stack, ees, thePlayer);
+					return stack.getItem().isValidArmor(stack, ees, player);
 				}
+
 				@Override
+				public boolean canTakeStack(EntityPlayer playerIn)
+				{
+					ItemStack itemstack = this.getStack();
+					return !itemstack.isEmpty() && !playerIn.isCreative() && EnchantmentHelper.hasBindingCurse(itemstack) ? false : super.canTakeStack(playerIn);
+				}
+
+				@Override
+				@Nullable
 				@SideOnly(Side.CLIENT)
 				public String getSlotTexture()
 				{
-					return ItemArmor.EMPTY_SLOT_NAMES[k];
+					return ItemArmor.EMPTY_SLOT_NAMES[ees.getIndex()];
 				}
 			});
 		}
 		PlayerInventory.buildInventoryLayout(this, playerInv, 8, 107, false, true);
 
 		//Manually built the remaining crafting slots because of an order issue. These have to be created after the default slots
-		if(player.getEntityData().hasKey("craftingTable") || !player.worldObj.isRemote)
+		if(player.getEntityData().hasKey("craftingTable") || !player.world.isRemote)
 		{
 			x = 2; y = 0; this.addSlotToContainer(new Slot(craftMatrix, y + x * 3, 82 + y * 18, 18 + x * 18));
 			x = 2; y = 1; this.addSlotToContainer(new Slot(craftMatrix, y + x * 3, 82 + y * 18, 18 + x * 18));
@@ -116,13 +128,18 @@ public class ContainerPlayerTFC extends ContainerPlayer
 	@Override
 	public void onCraftMatrixChanged(IInventory iinventory)
 	{
+		if(player == null)
+			return;
 		super.onCraftMatrixChanged(iinventory);
+		ItemStack is2 = CraftingManagerTFC.getInstance().findMatchingRecipe(this.craftMatrix, this.player.world);
+		if(!is2.isEmpty())
+			this.craftResult.setInventorySlotContents(0, is2);
 
 		Slot craftOut = (Slot) this.inventorySlots.get(0);
 		if (craftOut != null && craftOut.getHasStack())
 		{
 			ItemStack craftResult = craftOut.getStack();
-			if (craftResult != null)
+			if (craftResult != ItemStack.EMPTY)
 			{
 				//Removed During Port
 				/*if (craftResult.getItem() instanceof ItemFoodTFC)
@@ -131,30 +148,39 @@ public class ContainerPlayerTFC extends ContainerPlayer
 					CraftingHandler.transferNBT(false, thePlayer, craftResult, craftMatrix);*/
 			}
 		}
+		for (int i = 0; i < iinventory.getSizeInventory(); i++)
+		{
+			ItemStack is = iinventory.getStackInSlot(i);
+			if(is != ItemStack.EMPTY && is.getCount() == 0)
+			{
+				iinventory.setInventorySlotContents(i, ForgeHooks.getContainerItem(is));
+			}
+		}
+
 	}
 
 	@Override
 	public void onContainerClosed(EntityPlayer player)
 	{
-		if(!player.worldObj.isRemote)
+		if(!player.world.isRemote)
 		{
 			super.onContainerClosed(player);
 
 			for (int i = 0; i < 9; ++i)
 			{
-				ItemStack itemstack = this.craftMatrix.getStackInSlot(i);
-				if (itemstack != null)
+				ItemStack itemstack = this.craftMatrix.removeStackFromSlot(i);
+				if (!itemstack.isEmpty())
 					player.dropItem(itemstack, false);
 			}
 
-			this.craftResult.setInventorySlotContents(0, (ItemStack)null);
+			this.craftResult.setInventorySlotContents(0, ItemStack.EMPTY);
 		}
 	}
 
 	@Override
 	public ItemStack transferStackInSlot(EntityPlayer player, int slotNum)
 	{
-		ItemStack origStack = null;
+		ItemStack origStack = ItemStack.EMPTY;
 		Slot slot = (Slot) this.inventorySlots.get(slotNum);
 		//Slot equipmentSlot = (Slot) this.inventorySlots.get(50);
 
@@ -162,8 +188,9 @@ public class ContainerPlayerTFC extends ContainerPlayer
 		{
 			ItemStack slotStack = slot.getStack(); 
 			origStack = slotStack.copy();
+			InventoryPlayer ip = player.inventory;
 
-			// Crafting Grid Output
+			// Crafting Grid Output to inventory
 			if (slotNum == 0)
 			{
 				//Removed During Port
@@ -171,7 +198,7 @@ public class ContainerPlayerTFC extends ContainerPlayer
 				CraftingHandler.preCraft(player, slotStack, craftMatrix);*/
 
 				if (!this.mergeItemStack(slotStack, 9, 45, true))
-					return null;
+					return ItemStack.EMPTY;
 
 				slot.onSlotChange(slotStack, origStack);
 			}
@@ -179,17 +206,19 @@ public class ContainerPlayerTFC extends ContainerPlayer
 			else if (slotNum >= 1 && slotNum < 5 || player.getEntityData().hasKey("craftingTable") && slotNum >= 45 && slotNum < 50)
 			{
 				if (!this.mergeItemStack(slotStack, 9, 45, true))
-					return null;
+					return ItemStack.EMPTY;
+				onCraftMatrixChanged(ip);
 			}
 			// From armor or equipment slot to inventory
 			else if (slotNum >= 5 && slotNum < 9 || slotNum == 50)
 			{
 				if (!this.mergeItemStack(slotStack, 9, 45, true))
-					return null;
+					return ItemStack.EMPTY;
 			}
 			// From inventory to armor slots
 			//Removed During Port
-			/*else if (origStack.getItem() instanceof ItemArmor)
+			/*
+			else if (origStack.getItem() instanceof ItemArmor)
 			{
 				int armorSlotNum = 5 + ((ItemArmor) origStack.getItem()).armorType;
 				if (origStack.getItem() instanceof ItemTFCArmor)
@@ -215,24 +244,24 @@ public class ContainerPlayerTFC extends ContainerPlayer
 				if (equipment.getEquipType(origStack) == EquipType.BACK && (equipment == TFCItems.quiver || equipment.getTooHeavyToCarry(origStack)))
 				{
 					ItemStack backStack = slotStack.copy();
-					backStack.stackSize = 1;
+					backStack.getMaxStackSize() = 1;
 					equipmentSlot.putStack(backStack);
-					slotStack.stackSize--;
+					slotStack.getMaxStackSize()--;
 				}
 			}
 			// Food from inventory/hotbar to crafting grid
 			else if (slotNum >= 9 && slotNum < 45 && origStack.getItem() instanceof IFood && !(origStack.getItem() instanceof ItemMeal) && !isCraftingGridFull())
 			{
-				if (!this.mergeItemStack(slotStack, 1, 5, false) && slotStack.stackSize == 0)
+				if (!this.mergeItemStack(slotStack, 1, 5, false) && slotStack.getMaxStackSize() == 0)
 					return null;
-				else if (slotStack.stackSize > 0 && player.getEntityData().hasKey("craftingTable") && !this.mergeItemStack(slotStack, 45, 50, false))
+				else if (slotStack.getMaxStackSize() > 0 && player.getEntityData().hasKey("craftingTable") && !this.mergeItemStack(slotStack, 45, 50, false))
 					return null;
-				else if (slotStack.stackSize > 0 && slotNum >= 9 && slotNum < 36)
+				else if (slotStack.getMaxStackSize() > 0 && slotNum >= 9 && slotNum < 36)
 				{
 					if (!this.mergeItemStack(slotStack, 36, 45, false))
 						return null;
 				}
-				else if (slotStack.stackSize > 0 && slotNum >= 36 && slotNum < 45)
+				else if (slotStack.getMaxStackSize() > 0 && slotNum >= 36 && slotNum < 45)
 				{
 					if (!this.mergeItemStack(slotStack, 9, 36, false))
 						return null;
@@ -242,190 +271,238 @@ public class ContainerPlayerTFC extends ContainerPlayer
 			else if (slotNum >= 9 && slotNum < 36)
 			{
 				if (!this.mergeItemStack(slotStack, 36, 45, false))
-					return null;
+					return ItemStack.EMPTY;
 			}
 			// From hotbar to inventory
 			else if (slotNum >= 36 && slotNum < 45)
 			{
 				if (!this.mergeItemStack(slotStack, 9, 36, false))
-					return null;
+					return ItemStack.EMPTY;
 			}
 
-			if (slotStack.stackSize <= 0)
-				slot.putStack(null);
+			if (slotStack.isEmpty())
+				slot.putStack(ItemStack.EMPTY);
 			else
 				slot.onSlotChanged();
 
-			if (slotStack.stackSize == origStack.stackSize)
-				return null;
+			if (slotStack.getCount() == origStack.getCount())
+				return ItemStack.EMPTY;
 
-			slot.onPickupFromSlot(player, slotStack);
+			ItemStack itemstack2 = slot.onTake(player, slotStack);
+			if (slotNum == 0)
+				player.dropItem(itemstack2, false);
 		}
 
 		return origStack;
 	}
 
 	@Override
-	protected boolean mergeItemStack(ItemStack stack, int startIndex, int endIndex, boolean useEndIndex)
+	protected boolean mergeItemStack(ItemStack stack, int startIndex, int endIndex, boolean reverseDirection)
 	{
-		boolean flag1 = false;
-		int k = startIndex;
+		boolean flag = false;
+		int i = startIndex;
 
-		if (useEndIndex)
+		if (reverseDirection)
 		{
-			k = endIndex - 1;
+			i = endIndex - 1;
 		}
-
-		Slot slot;
-		ItemStack itemstack1;
 
 		if (stack.isStackable())
 		{
-			while (stack.stackSize > 0 && (!useEndIndex && k < endIndex || useEndIndex && k >= startIndex))
+			while (!stack.isEmpty())
 			{
-				slot = (Slot)this.inventorySlots.get(k);
-				itemstack1 = slot.getStack();
-
-				if (itemstack1 != null && 
-						itemstack1.getItem() == stack.getItem() && 
-						(!stack.getHasSubtypes() || stack.getMetadata() == itemstack1.getMetadata()) && 
-						ContainerTFC.areCompoundsEqual(stack, itemstack1))
+				if (reverseDirection)
 				{
-					if(stack.getItem() instanceof IFood && itemstack1.getItem() instanceof IFood)
+					if (i < startIndex)
 					{
-						long ex1 = Food.getDecayTimer(stack);
-						long ex2 = Food.getDecayTimer(itemstack1);
-						if(ex1 < ex2)
-							Food.setDecayTimer(itemstack1, ex1);
-					}
-
-					int l = itemstack1.stackSize + stack.stackSize;
-
-					if (l <= stack.getMaxStackSize())
-					{
-						stack.stackSize = 0;
-						itemstack1.stackSize = l;
-						slot.onSlotChanged();
-						flag1 = true;
-					}
-					else if (itemstack1.stackSize < stack.getMaxStackSize())
-					{
-						stack.stackSize -= stack.getMaxStackSize() - itemstack1.stackSize;
-						itemstack1.stackSize = stack.getMaxStackSize();
-						slot.onSlotChanged();
-						flag1 = true;
+						break;
 					}
 				}
-
-				if (useEndIndex)
+				else if (i >= endIndex)
 				{
-					--k;
-				}
-				else
-				{
-					++k;
-				}
-			}
-		}
-
-		if (stack.stackSize > 0)
-		{
-			if (useEndIndex)
-			{
-				k = endIndex - 1;
-			}
-			else
-			{
-				k = startIndex;
-			}
-
-			while (!useEndIndex && k < endIndex || useEndIndex && k >= startIndex)
-			{
-				slot = (Slot)this.inventorySlots.get(k);
-				itemstack1 = slot.getStack();
-
-				if (itemstack1 == null && slot.isItemValid(stack)) // Forge: Make sure to respect isItemValid in the slot.
-				{
-					slot.putStack(stack.copy());
-					slot.onSlotChanged();
-					stack.stackSize = 0;
-					flag1 = true;
 					break;
 				}
 
-				if (useEndIndex)
+				Slot slot = (Slot)this.inventorySlots.get(i);
+				ItemStack itemstack = slot.getStack();
+
+				if (!itemstack.isEmpty() && itemstack.getItem() == stack.getItem() && (!stack.getHasSubtypes() || stack.getMetadata() == itemstack.getMetadata()) && ContainerTFC.areCompoundsEqual(stack, itemstack))
 				{
-					--k;
+					int j = itemstack.getCount() + stack.getCount();
+					int maxSize = Math.min(slot.getSlotStackLimit(), stack.getMaxStackSize());
+
+					if(stack.getItem() instanceof IFood && itemstack.getItem() instanceof IFood)
+					{
+						long ex1 = Food.getDecayTimer(stack);
+						long ex2 = Food.getDecayTimer(itemstack);
+						if(ex1 < ex2)
+							Food.setDecayTimer(itemstack, ex1);
+					}
+
+					if (j <= maxSize)
+					{
+						stack.setCount(0);
+						itemstack.setCount(j);
+						slot.onSlotChanged();
+						flag = true;
+					}
+					else if (itemstack.getCount() < maxSize)
+					{
+						stack.shrink(maxSize - itemstack.getCount());
+						itemstack.setCount(maxSize);
+						slot.onSlotChanged();
+						flag = true;
+					}
+				}
+
+				if (reverseDirection)
+				{
+					--i;
 				}
 				else
 				{
-					++k;
+					++i;
 				}
 			}
 		}
 
-		return flag1;
+		if (!stack.isEmpty())
+		{
+			if (reverseDirection)
+			{
+				i = endIndex - 1;
+			}
+			else
+			{
+				i = startIndex;
+			}
+
+			while (true)
+			{
+				if (reverseDirection)
+				{
+					if (i < startIndex)
+					{
+						break;
+					}
+				}
+				else if (i >= endIndex)
+				{
+					break;
+				}
+
+				Slot slot1 = (Slot)this.inventorySlots.get(i);
+				ItemStack itemstack1 = slot1.getStack();
+
+				if (itemstack1.isEmpty() && slot1.isItemValid(stack))
+				{
+					if (stack.getCount() > slot1.getSlotStackLimit())
+					{
+						slot1.putStack(stack.splitStack(slot1.getSlotStackLimit()));
+					}
+					else
+					{
+						slot1.putStack(stack.splitStack(stack.getCount()));
+					}
+
+					slot1.onSlotChanged();
+					flag = true;
+					break;
+				}
+
+				if (reverseDirection)
+				{
+					--i;
+				}
+				else
+				{
+					++i;
+				}
+			}
+		}
+
+		return flag;
 	}
 
 
 	@Override
 	/**
 	 * Handles slot click.
-	 *  
-	 * @param mode 0 = basic click, 1 = shift click, 2 = hotbar, 3 = pick block, 4 = drop, 5 = ?, 6 = double click
 	 */
 	public ItemStack slotClick(int slotID, int dragType, ClickType clickTypeIn, EntityPlayer p)
 	{
+		if (clickTypeIn == ClickType.SWAP && slotID >= 5 && slotID <=8)  //Vanilla armor slots
+			return ItemStack.EMPTY;  //Disable HotBar Keys for now (to prevent free items exploits)
 		if (slotID >= 0 && slotID < this.inventorySlots.size())
 		{
 			Slot sourceSlot = (Slot) this.inventorySlots.get(slotID);
 			ItemStack slotStack = sourceSlot.getStack();
+			if (slotStack == null)  return ItemStack.EMPTY;
 
-			//This section is for merging foods with differing expirations.
-			if(clickTypeIn == ClickType.SWAP && slotStack != null && p.inventory.getItemStack() != null)
+			//--- Hotbar slots 1-9 HotKeys --- 
+			if (clickTypeIn == ClickType.SWAP && dragType >= 0 && dragType < 9)
 			{
-				ItemStack itemstack4 = p.inventory.getItemStack();
-				if (slotStack.getItem() == itemstack4.getItem() && slotStack.getMetadata() == itemstack4.getMetadata() && ContainerTFC.areCompoundsEqual(slotStack, itemstack4))
+				int hbID = 36 + dragType;
+
+				if (slotID == 0)  //Crafting output slot
 				{
-					if(slotStack.getItem() instanceof IFood && itemstack4.getItem() instanceof IFood)
+					if (mergeItemStack(slotStack, hbID, hbID+1, false))
+					{
+						sourceSlot.onSlotChanged();
+						ItemStack itemstack2 = sourceSlot.onTake(p, slotStack);
+						p.dropItem(itemstack2, false);
+						return ItemStack.EMPTY;
+					}
+					else
+						return ItemStack.EMPTY;
+				}
+			}
+
+			if(clickTypeIn == ClickType.PICKUP && !p.inventory.getItemStack().isEmpty())
+			{
+				ItemStack mouseStack = p.inventory.getItemStack();
+				if (slotStack.getItem() == mouseStack.getItem() && slotStack.getMetadata() == mouseStack.getMetadata() && ContainerTFC.areCompoundsEqual(slotStack, mouseStack))
+				{
+					if(slotStack.getItem() instanceof IFood && mouseStack.getItem() instanceof IFood)
 					{
 						long ex1 = Food.getDecayTimer(slotStack);
-						long ex2 = Food.getDecayTimer(itemstack4);
+						long ex2 = Food.getDecayTimer(mouseStack);
 						if(ex2 < ex1)
 							Food.setDecayTimer(slotStack, ex2);
 					}
 
-					int l1 = itemstack4.stackSize;
+					int mouseStackSize = mouseStack.getCount();
 
-					if (l1 > sourceSlot.getItemStackLimit(itemstack4) - slotStack.stackSize)
+					if (mouseStackSize > sourceSlot.getItemStackLimit(mouseStack) - slotStack.getCount())
 					{
-						l1 = sourceSlot.getItemStackLimit(itemstack4) - slotStack.stackSize;
+						mouseStackSize = sourceSlot.getItemStackLimit(mouseStack) - slotStack.getCount();
 					}
 
-					if (l1 > itemstack4.getMaxStackSize() - slotStack.stackSize)
+					if (mouseStackSize > mouseStack.getMaxStackSize() - slotStack.getCount())
 					{
-						l1 = itemstack4.getMaxStackSize() - slotStack.stackSize;
+						mouseStackSize = mouseStack.getMaxStackSize() - slotStack.getCount();
 					}
 
-					itemstack4.splitStack(l1);
+					mouseStack.splitStack(mouseStackSize);
 
-					if (itemstack4.stackSize == 0)
+					if (mouseStack.getCount() == 0)
 					{
-						p.inventory.setItemStack((ItemStack)null);
+						p.inventory.setItemStack(ItemStack.EMPTY);
 					}
 
-					slotStack.stackSize += l1;
-					return null;
+					slotStack.grow(mouseStackSize);
+					return ItemStack.EMPTY;
 				}
-				else if (itemstack4.stackSize <= sourceSlot.getItemStackLimit(itemstack4))
+				else if (mouseStack.getMaxStackSize() <= sourceSlot.getItemStackLimit(mouseStack))
 				{
-					sourceSlot.putStack(itemstack4);
+					sourceSlot.putStack(mouseStack);
 					p.inventory.setItemStack(slotStack);
+					return ItemStack.EMPTY;
 				}
 			}
 
 			// Hotbar press to remove from crafting output
-			if (clickTypeIn == ClickType.QUICK_CRAFT && slotID == 0 && slotStack != null)
+			if (clickTypeIn == ClickType.QUICK_CRAFT && slotID == 0)
 			{
 				//Removed During Port
 				//CraftingHandler.preCraft(p, slotStack, craftMatrix);
@@ -433,7 +510,7 @@ public class ContainerPlayerTFC extends ContainerPlayer
 			// S and D hotkeys for trimming/combining food
 
 			// Couldn't figure out what was causing the food dupe with a full inventory, so we're just going to block shift clicking for that case.
-			/*else if (mode == 1 && slotID == 0 && isInventoryFull() && slotStack != null && slotStack.getItem() instanceof IFood)
+			/*else if (mode == 1 && slotID == 0 && isInventoryFull() && slotStack.getItem() instanceof IFood)
 				return null;*/
 		}
 		return super.slotClick(slotID, dragType, clickTypeIn, p);
@@ -462,6 +539,6 @@ public class ContainerPlayerTFC extends ContainerPlayer
 
 	public EntityPlayer getPlayer()
 	{
-		return this.thePlayer;
+		return this.player;
 	}
 }

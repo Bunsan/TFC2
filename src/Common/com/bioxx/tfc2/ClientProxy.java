@@ -5,8 +5,6 @@ import java.io.File;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.ItemMeshDefinition;
-import net.minecraft.client.renderer.block.model.ModelBakery;
 import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.client.renderer.block.statemap.StateMapperBase;
 import net.minecraft.client.renderer.color.IBlockColor;
@@ -16,10 +14,11 @@ import net.minecraft.client.settings.GameSettings;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
 import net.minecraft.network.Packet;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.*;
+import net.minecraft.world.ColorizerGrass;
+import net.minecraft.world.IBlockAccess;
+import net.minecraft.world.World;
 
 import net.minecraftforge.client.GuiIngameForge;
 import net.minecraftforge.client.model.ModelLoader;
@@ -41,6 +40,8 @@ import com.bioxx.tfc2.api.types.WoodType;
 import com.bioxx.tfc2.api.util.KeyBindings;
 import com.bioxx.tfc2.blocks.BlockLeaves;
 import com.bioxx.tfc2.blocks.BlockLeaves2;
+import com.bioxx.tfc2.blocks.BlockVegDesert;
+import com.bioxx.tfc2.blocks.BlockVegDesert.DesertVegType;
 import com.bioxx.tfc2.blocks.BlockVegetation;
 import com.bioxx.tfc2.blocks.BlockVegetation.VegType;
 import com.bioxx.tfc2.core.RegistryItemQueue;
@@ -61,80 +62,6 @@ public class ClientProxy extends CommonProxy
 	public void preInit(FMLPreInitializationEvent event)
 	{
 		super.preInit(event);
-		//Setup Liquid Blocks - MUST be in preInit
-		Item fresh = Item.getItemFromBlock(TFCBlocks.FreshWater);
-		Item salt = Item.getItemFromBlock(TFCBlocks.SaltWater);
-		Item saltstatic = Item.getItemFromBlock(TFCBlocks.SaltWaterStatic);
-		Item freshstatic = Item.getItemFromBlock(TFCBlocks.FreshWaterStatic);
-		ModelBakery.registerItemVariants(fresh);
-		ModelBakery.registerItemVariants(salt);
-		ModelBakery.registerItemVariants(saltstatic);
-		ModelBakery.registerItemVariants(freshstatic);
-		ModelLoader.setCustomMeshDefinition(fresh, new ItemMeshDefinition()
-		{
-			@Override
-			public ModelResourceLocation getModelLocation(ItemStack stack)
-			{
-				return freshwaterLocation;
-			}
-		});
-		ModelLoader.setCustomMeshDefinition(salt, new ItemMeshDefinition()
-		{
-			@Override
-			public ModelResourceLocation getModelLocation(ItemStack stack)
-			{
-				return saltwaterLocation;
-			}
-		});
-		ModelLoader.setCustomMeshDefinition(saltstatic, new ItemMeshDefinition()
-		{
-			@Override
-			public ModelResourceLocation getModelLocation(ItemStack stack)
-			{
-				return saltwaterLocation;
-			}
-		});
-		ModelLoader.setCustomMeshDefinition(freshstatic, new ItemMeshDefinition()
-		{
-			@Override
-			public ModelResourceLocation getModelLocation(ItemStack stack)
-			{
-				return freshwaterLocation;
-			}
-		});
-		ModelLoader.setCustomStateMapper(TFCBlocks.FreshWater, new StateMapperBase()
-		{
-			@Override
-			protected ModelResourceLocation getModelResourceLocation(IBlockState state)
-			{
-				return freshwaterLocation;
-			}
-		});
-		ModelLoader.setCustomStateMapper(TFCBlocks.SaltWater, new StateMapperBase()
-		{
-			@Override
-			protected ModelResourceLocation getModelResourceLocation(IBlockState state)
-			{
-				return saltwaterLocation;
-			}
-		});
-		ModelLoader.setCustomStateMapper(TFCBlocks.SaltWaterStatic, new StateMapperBase()
-		{
-			@Override
-			protected ModelResourceLocation getModelResourceLocation(IBlockState state)
-			{
-				return saltwaterLocation;
-			}
-		});
-		ModelLoader.setCustomStateMapper(TFCBlocks.FreshWaterStatic, new StateMapperBase()
-		{
-			@Override
-			protected ModelResourceLocation getModelResourceLocation(IBlockState state)
-			{
-				return freshwaterLocation;
-			}
-		});
-		//End Liquids
 
 		setupBlockMeshes();
 
@@ -289,26 +216,26 @@ public class ClientProxy extends CommonProxy
 			@Override
 			public int colorMultiplier(IBlockState state, IBlockAccess worldIn, BlockPos pos, int tintIndex)
 			{
-				if(pos == null || WorldGen.getInstance() == null)
+				if(worldIn == null || pos == null || WorldGen.getInstance() == null)
 					return 0x55ff55;
 				int x = pos.getX() >> 12;
 				int z = pos.getZ() >> 12;
 				IslandMap m = WorldGen.getInstance().getIslandMap(x, z);
 				double d0 = m.getParams().getIslandTemp().getMapTemp();
-				double d1 = 0.5;
-
-				if(worldIn instanceof ChunkCache)
-					d1 = Core.getMoistureFromChunk((ChunkCache)worldIn, pos);
+				double d1 = m.getClosestCenter(pos).getMoistureRaw() * m.getParams().getIslandMoisture().getMoisture();
 
 				if(m.getParams().hasFeature(Feature.Desert))
+				{
 					d1 *= 0.25;
+					d0 *= 1.5;
+				}
 
 				if(d1 < 0.25)
 				{
-					if(state.getValue(BlockLeaves.META_PROPERTY) == WoodType.Acacia)
+					if(state.getBlock() == TFCBlocks.Leaves && state.getValue(BlockLeaves.META_PROPERTY) == WoodType.Acacia)
 						d1 = 0.25;
 				}
-				return ColorizerFoliage.getFoliageColor(d0, d1);
+				return ColorizerGrass.getGrassColor(Math.min(d0, 1), Math.min(d1, 1));
 			}
 		}, new Block[] { TFCBlocks.Leaves, TFCBlocks.Leaves2});
 
@@ -317,23 +244,23 @@ public class ClientProxy extends CommonProxy
 			@Override
 			public int colorMultiplier(IBlockState state, IBlockAccess worldIn, BlockPos pos, int tintIndex)
 			{
-				if(pos == null || WorldGen.getInstance() == null)
+				if(worldIn == null ||pos == null || WorldGen.getInstance() == null || state.getBlock() != TFCBlocks.Vegetation)
 					return 0x55ff55;
-				VegType veg = (VegType)worldIn.getBlockState(pos).getValue(BlockVegetation.META_PROPERTY);
-				if(veg == VegType.DeadBush)
-					return 0xD8D8D8;
+				VegType veg = (VegType)state.getValue(BlockVegetation.META_PROPERTY);
+
 				int x = pos.getX() >> 12;
 				int z = pos.getZ() >> 12;
 
 				IslandMap m = WorldGen.getInstance().getIslandMap(x, z);
 				double d0 = m.getParams().getIslandTemp().getMapTemp();
-				double d1 = 0.5;
+				double d1 = m.getClosestCenter(pos).getMoistureRaw() * m.getParams().getIslandMoisture().getMoisture();
 
-				if(worldIn instanceof ChunkCache)
-					d1 = Core.getMoistureFromChunk((ChunkCache)worldIn, pos);
 				if(m.getParams().hasFeature(Feature.Desert))
+				{
 					d1 *= 0.25;
-				return ColorizerGrass.getGrassColor(d0, d1);
+					d0 *= 1.5;
+				}
+				return ColorizerGrass.getGrassColor(Math.min(d0, 1), Math.min(d1, 1));
 			}
 		}, new Block[] { TFCBlocks.Vegetation});
 
@@ -342,20 +269,42 @@ public class ClientProxy extends CommonProxy
 			@Override
 			public int colorMultiplier(IBlockState state, IBlockAccess worldIn, BlockPos pos, int tintIndex)
 			{
-				if(pos == null || WorldGen.getInstance() == null)
+				if(worldIn == null ||pos == null || WorldGen.getInstance() == null || state.getBlock() != TFCBlocks.VegDesert)
+					return 0x55ff55;
+				DesertVegType veg = (DesertVegType)state.getValue(BlockVegDesert.META_PROPERTY);
+				if(veg == DesertVegType.DeadBush)
+					return 0xD8D8D8;
+				int x = pos.getX() >> 12;
+				int z = pos.getZ() >> 12;
+
+				IslandMap m = WorldGen.getInstance().getIslandMap(x, z);
+				double d0 = m.getParams().getIslandTemp().getMapTemp();
+				double d1 = m.getClosestCenter(pos).getMoistureRaw() * m.getParams().getIslandMoisture().getMoisture();
+				/*if(m.getParams().hasFeature(Feature.Desert))
+					d1 *= 0.25;*/
+				return ColorizerGrass.getGrassColor(Math.min(d0, 1), Math.min(d1, 1));
+			}
+		}, new Block[] { TFCBlocks.VegDesert});
+
+		Minecraft.getMinecraft().getBlockColors().registerBlockColorHandler(new IBlockColor()
+		{
+			@Override
+			public int colorMultiplier(IBlockState state, IBlockAccess worldIn, BlockPos pos, int tintIndex)
+			{
+				if(worldIn == null ||pos == null || WorldGen.getInstance() == null)
 					return 0x55ff55;
 				int x = pos.getX() >> 12;
 				int z = pos.getZ() >> 12;
 				IslandMap m = WorldGen.getInstance().getIslandMap(x, z);
 				double d0 = m.getParams().getIslandTemp().getMapTemp();
-				double d1 = 0.5;
+				double d1 = m.getClosestCenter(pos).getMoistureRaw() * m.getParams().getIslandMoisture().getMoisture();
 
-				if(worldIn instanceof ChunkCache)
-					d1 = Core.getMoistureFromChunk((ChunkCache)worldIn, pos);
 				if(m.getParams().hasFeature(Feature.Desert))
+				{
 					d1 *= 0.25;
-
-				return ColorizerGrass.getGrassColor(d0, d1);
+					d0 *= 1.5;
+				}
+				return ColorizerGrass.getGrassColor(Math.min(d0, 1), Math.min(d1, 1));
 			}
 		}, new Block[] { TFCBlocks.Grass});
 	}
@@ -441,7 +390,7 @@ public class ClientProxy extends CommonProxy
 		registerVariantModel(Item.getItemFromBlock(TFCBlocks.Sapling), "Wood/Saplings/", WoodType.getNamesArray(), 0, 16);
 		registerVariantModel(Item.getItemFromBlock(TFCBlocks.LogVertical), "Wood/Logs/", WoodType.getNamesArray(), 0, 16);
 		registerVariantModel(Item.getItemFromBlock(TFCBlocks.Leaves), "Wood/Leaves/", WoodType.getNamesArray(), 0, 16);
-		registerVariantModel(Item.getItemFromBlock(TFCBlocks.Planks2), "Wood/Planks/", WoodType.getNamesArray(), 16, 18);
+		registerVariantModel(Item.getItemFromBlock(TFCBlocks.Planks2), "Wood/Planks/", WoodType.getNamesArray(), 16, 19);
 		registerVariantModel(Item.getItemFromBlock(TFCBlocks.Sapling2), "Wood/Saplings/", WoodType.getNamesArray(), 16, 19);
 		registerVariantModel(Item.getItemFromBlock(TFCBlocks.LogVertical2), "Wood/Logs/", WoodType.getNamesArray(), 16, 19);
 		registerVariantModel(Item.getItemFromBlock(TFCBlocks.Leaves2), "Wood/Leaves/", WoodType.getNamesArray(), 16, 18);
@@ -451,7 +400,7 @@ public class ClientProxy extends CommonProxy
 		registerVariantModel(Item.getItemFromBlock(TFCBlocks.StoneSmooth), "StoneSmooth/", Global.STONE_ALL, 0, 16);
 		registerVariantModel(Item.getItemFromBlock(TFCBlocks.SupportBeam), "Wood/SupportBeams/", WoodType.getNamesArray(), 0, 8);
 		registerVariantModel(Item.getItemFromBlock(TFCBlocks.SupportBeam2), "Wood/SupportBeams/", WoodType.getNamesArray(), 8, 16);
-		registerVariantModel(Item.getItemFromBlock(TFCBlocks.SupportBeam3), "Wood/SupportBeams/", WoodType.getNamesArray(), 16, 18);
+		registerVariantModel(Item.getItemFromBlock(TFCBlocks.SupportBeam3), "Wood/SupportBeams/", WoodType.getNamesArray(), 16, 19);
 		ModelLoader.setCustomModelResourceLocation(Item.getItemFromBlock(TFCBlocks.TorchOn),0,new ModelResourceLocation(Reference.ModID + ":torch_on", "inventory"));
 		ModelLoader.setCustomModelResourceLocation(Item.getItemFromBlock(TFCBlocks.TorchOff),0,new ModelResourceLocation(Reference.ModID + ":torch_off", "inventory"));
 		for(Block b : TFCBlocks.stairsList)
@@ -459,6 +408,7 @@ public class ClientProxy extends CommonProxy
 			ModelLoader.setCustomModelResourceLocation(Item.getItemFromBlock(b),0,new ModelResourceLocation(Reference.ModID + ":Wood/Stairs/"+Core.getUnlocalized(b.getUnlocalizedName()), "inventory"));
 		}
 		RegistryItemQueue.getInstance().registerMeshes();
+		ModelLoader.setCustomModelResourceLocation(Item.getItemFromBlock(TFCBlocks.Thatch), 0, new ModelResourceLocation(Reference.ModID + ":thatch", "inventory"));
 	}
 
 	private void registerVariantModel(Item item, String path, String[] variantNames, int metaStart, int metaEnd)
@@ -479,12 +429,14 @@ public class ClientProxy extends CommonProxy
 	 */
 	public void sendToAllNear(World world, BlockPos pos, int range, Packet<?> packet)
 	{
-
+		if(world.isRemote)
+			return;
+		super.sendToAllNear(world, pos, range, packet);
 	}
 
 	@Override
 	public EntityPlayer getPlayer()
 	{
-		return Minecraft.getMinecraft().thePlayer;
+		return Minecraft.getMinecraft().player;
 	}
 }

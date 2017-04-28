@@ -17,7 +17,7 @@ public class WorldProviderPaths extends WorldProvider
 	@Override
 	public IChunkGenerator createChunkGenerator()
 	{
-		return new ChunkProviderPaths(worldObj, worldObj.getSeed(), false, "");
+		return new ChunkProviderPaths(world, world.getSeed(), false, "");
 	}
 
 	@Override
@@ -57,7 +57,7 @@ public class WorldProviderPaths extends WorldProvider
 	}
 
 	@Override
-	public boolean getHasNoSky()
+	public boolean hasNoSky()
 	{
 		return true;
 	}
@@ -70,6 +70,12 @@ public class WorldProviderPaths extends WorldProvider
 
 	@Override
 	public boolean canDoRainSnowIce(net.minecraft.world.chunk.Chunk chunk)
+	{
+		return false;
+	}
+
+	@Override
+	public boolean canRespawnHere()
 	{
 		return false;
 	}
@@ -111,7 +117,7 @@ public class WorldProviderPaths extends WorldProvider
 	@Override
 	public BlockPos getSpawnPoint()
 	{
-		WorldInfo info = this.worldObj.getWorldInfo();
+		WorldInfo info = this.world.getWorldInfo();
 		return new BlockPos(info.getSpawnX(), info.getSpawnY(), info.getSpawnZ());
 	}
 

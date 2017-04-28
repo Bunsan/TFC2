@@ -6,16 +6,15 @@ import net.minecraft.block.properties.IProperty;
 import net.minecraft.block.properties.PropertyEnum;
 import net.minecraft.block.state.BlockStateContainer;
 import net.minecraft.block.state.IBlockState;
-import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.IBlockAccess;
 
-import com.bioxx.tfc2.Core;
 import com.bioxx.tfc2.TFCBlocks;
 import com.bioxx.tfc2.api.interfaces.ISupportBlock;
 import com.bioxx.tfc2.api.types.StoneType;
 import com.bioxx.tfc2.blocks.terrain.BlockCollapsible;
 import com.bioxx.tfc2.blocks.terrain.BlockRubble;
+import com.bioxx.tfc2.core.TFCTabs;
 
 public class BlockStoneSmooth extends BlockCollapsible implements ISupportBlock
 {
@@ -24,7 +23,7 @@ public class BlockStoneSmooth extends BlockCollapsible implements ISupportBlock
 	public BlockStoneSmooth()
 	{
 		super(Material.GROUND, META_PROPERTY);
-		this.setCreativeTab(CreativeTabs.BUILDING_BLOCKS);
+		this.setCreativeTab(TFCTabs.TFCBuilding);
 		setSoundType(SoundType.STONE);
 	}
 
@@ -42,14 +41,6 @@ public class BlockStoneSmooth extends BlockCollapsible implements ISupportBlock
 	public int getNaturalSupportRange(IBlockAccess world, BlockPos pos, IBlockState myState)
 	{
 		return 6;
-	}
-
-	@Override
-	public boolean canBeSupportedBy(IBlockState myState, IBlockState otherState)
-	{
-		if(otherState.getBlock() == this || Core.isSoil(otherState) || Core.isStone(otherState) || otherState.getBlock() instanceof ISupportBlock)
-			return true;
-		return false;
 	}
 
 	/*******************************************************************************

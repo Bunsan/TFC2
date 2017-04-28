@@ -52,7 +52,7 @@ public class AnvilTESR extends TileEntitySpecialRenderer<TileAnvil>
 		Vector2d BR;
 		Vector2d BL;
 
-		EntityPlayer player = Minecraft.getMinecraft().thePlayer;
+		EntityPlayer player = Minecraft.getMinecraft().player;
 		Timekeeper time = Timekeeper.getInstance();
 
 		if(player.getHorizontalFacing() == EnumFacing.WEST)
@@ -168,7 +168,7 @@ public class AnvilTESR extends TileEntitySpecialRenderer<TileAnvil>
 	{
 		Tessellator tessellator = Tessellator.getInstance();
 		VertexBuffer buffer = tessellator.getBuffer();
-		EntityPlayer player = Minecraft.getMinecraft().thePlayer;
+		EntityPlayer player = Minecraft.getMinecraft().player;
 
 		double scale = 0.25;
 		double panelPosX = xPos+0.5;
@@ -290,8 +290,8 @@ public class AnvilTESR extends TileEntitySpecialRenderer<TileAnvil>
 		recipeMarker.addVertex(new VertexTex(TL.addVector(pixelScaleX*3, -pixelScaleY*22, 0), 7f/256f, 98f/256f));
 		recipeMarker.addVertex(new VertexTex(TL.addVector(pixelScaleX*10, -pixelScaleY*16, 0), 14f/256f, 92f/256f));
 		recipeMarker.addVertex(new VertexTex(TL.addVector(pixelScaleX*10, -pixelScaleY*22, 0), 14f/256f, 98f/256f));
-		ui.addComponent(recipeMarker);
-		 */
+		ui.addComponent(recipeMarker);*/
+
 		switch(player.getHorizontalFacing())
 		{
 		case EAST:

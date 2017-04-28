@@ -1,9 +1,9 @@
 package com.bioxx.tfc2.blocks;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
 
-import net.minecraft.block.Block;
 import net.minecraft.block.SoundType;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.properties.IProperty;
@@ -13,9 +13,13 @@ import net.minecraft.block.state.BlockStateContainer;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.Entity;
+import net.minecraft.init.Items;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.pathfinding.PathNodeType;
 import net.minecraft.util.BlockRenderLayer;
 import net.minecraft.util.EnumParticleTypes;
+import net.minecraft.util.NonNullList;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
@@ -25,7 +29,7 @@ import net.minecraft.world.World;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
-import com.bioxx.tfc2.Core;
+import com.bioxx.tfc2.TFCBlocks;
 import com.bioxx.tfc2.api.types.WoodType;
 
 public class BlockLeaves extends BlockTerra
@@ -37,7 +41,7 @@ public class BlockLeaves extends BlockTerra
 	public BlockLeaves()
 	{
 		super(Material.LEAVES, null);
-		this.setCreativeTab(CreativeTabs.DECORATIONS);
+		this.setCreativeTab(null);
 		this.setHardness(0.2F);
 		this.setLightOpacity(1);
 		this.META_PROP = META_PROPERTY;
@@ -49,9 +53,22 @@ public class BlockLeaves extends BlockTerra
 	 * 1. Content 
 	 *******************************************************************************/
 	@Override
+	public void getSubBlocks(Item itemIn, CreativeTabs tab, NonNullList list)
+	{
+		for(int l = 0; l < 16; l++)
+			list.add(new ItemStack(itemIn, 1, l));
+	}
+
+	@Override
 	public boolean isPassable(IBlockAccess worldIn, BlockPos pos)
 	{
 		return true;
+	}
+
+	@Override
+	public net.minecraft.pathfinding.PathNodeType getAiPathNodeType(IBlockState state, IBlockAccess world, BlockPos pos)
+	{
+		return PathNodeType.OPEN;
 	}
 
 	@Override
@@ -61,9 +78,11 @@ public class BlockLeaves extends BlockTerra
 	}
 
 	@Override
-	public Item getItemDropped(IBlockState state, Random rand, int fortune)
+	public List<ItemStack> getDrops(IBlockAccess world, BlockPos pos, IBlockState state, int fortune)
 	{
-		return null;
+		List<ItemStack> ret = new java.util.ArrayList<ItemStack>();
+		ret.add(new ItemStack(Items.STICK, 1, 0));
+		return ret;
 	}
 
 	@Override
@@ -73,19 +92,28 @@ public class BlockLeaves extends BlockTerra
 	}
 
 	@Override
-	public void neighborChanged(IBlockState state, World worldIn, BlockPos pos, Block blockIn)
+	public void onNeighborChange(IBlockAccess worldIn, BlockPos pos, BlockPos blockIn)
 	{
-		worldIn.scheduleUpdate(pos, this, tickRate(worldIn));
+		((World)worldIn).scheduleUpdate(pos, this, tickRate((World)worldIn));
 	}
 
 	@Override
 	public void updateTick(World world, BlockPos pos, IBlockState state, Random rand)
 	{
-		if(world.isRemote)
+		if(world.isRemote || state.getBlock() != this)
 			return;
 		IBlockState scanState;
-		WoodType wood = (WoodType)state.getValue(META_PROPERTY);
+		WoodType wood = (WoodType)state.getValue(getMetaProperty());
 		BlockPos scanPos;
+
+		if(wood == WoodType.Palm)
+		{
+			scanState = world.getBlockState(pos.down());
+			if(scanState.getBlock() != TFCBlocks.LogNaturalPalm)
+				world.setBlockToAir(pos);
+			return;
+		}
+
 		if (world.isAreaLoaded(pos.add(-5, -5, -5), pos.add(5, 5, 5)))
 		{
 			for(int y = -4; y <= 4; y++)
@@ -96,17 +124,30 @@ public class BlockLeaves extends BlockTerra
 					{
 						scanPos = pos.add(x, y, z);
 						scanState = world.getBlockState(pos.add(x, y, z));
-						if(Core.isNaturalLog(scanState) && scanState.getValue(META_PROPERTY) == wood)
+						if((state.getBlock() == TFCBlocks.Leaves && scanState.getBlock() == TFCBlocks.LogNatural && scanState.getValue(BlockLogNatural.META_PROPERTY) == wood) ||
+								(state.getBlock() == TFCBlocks.Leaves2 && scanState.getBlock() == TFCBlocks.LogNatural2 && scanState.getValue(BlockLogNatural2.META_PROPERTY) == wood))
 							return;
 					}
 				}
 			}
-			world.scheduleUpdate(pos.north(), this, tickRate(world));
-			world.scheduleUpdate(pos.south(), this, tickRate(world));
-			world.scheduleUpdate(pos.east(), this, tickRate(world));
-			world.scheduleUpdate(pos.west(), this, tickRate(world));
+
+			for(int y = -1; y <= 1; y++)
+			{
+				for(int x = -1; x <= 1; x++)
+				{
+					for(int z = -1; z <= 1; z++)
+					{
+						world.scheduleUpdate(pos.add(x, y, z), this, tickRate(world));
+					}
+				}
+			}
 			world.setBlockToAir(pos);
 		}
+	}
+
+	protected IProperty getMetaProperty()
+	{
+		return META_PROPERTY;
 	}
 
 	@Override
@@ -120,13 +161,19 @@ public class BlockLeaves extends BlockTerra
 	 *******************************************************************************/
 
 	@Override
-	public boolean isOpaqueCube(IBlockState state)
+	public boolean isNormalCube(IBlockState state, IBlockAccess world, BlockPos pos)
 	{
-		return false;//!this.isTransparent;
+		return false;
 	}
 
 	@Override
-	public boolean isVisuallyOpaque()
+	public boolean isOpaqueCube(IBlockState state)
+	{
+		return false;
+	}
+
+	@Override
+	public boolean isFullCube(IBlockState state)
 	{
 		return false;
 	}
@@ -180,7 +227,7 @@ public class BlockLeaves extends BlockTerra
 	}
 
 	@Override
-	public AxisAlignedBB getCollisionBoundingBox(IBlockState blockState, World worldIn, BlockPos pos)
+	public AxisAlignedBB getCollisionBoundingBox(IBlockState blockState, IBlockAccess worldIn, BlockPos pos)
 	{
 		return NULL_AABB;
 	}

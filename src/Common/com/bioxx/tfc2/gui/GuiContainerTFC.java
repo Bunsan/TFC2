@@ -52,11 +52,11 @@ public class GuiContainerTFC extends GuiContainer
 
 	protected boolean isMouseOverSlot(Slot par1Slot, int par2, int par3)
 	{
-		return this.isPointInRegion(par1Slot.xDisplayPosition, par1Slot.yDisplayPosition, 16, 16, par2, par3);
+		return this.isPointInRegion(par1Slot.xPos, par1Slot.yPos, 16, 16, par2, par3);
 	}
 
 	@Override
-	protected void drawGuiContainerBackgroundLayer(float f, int i, int j)
+	protected void drawGuiContainerBackgroundLayer(float f, int mouseX, int mouseY)
 	{
 		drawGui(null);
 	}
@@ -72,7 +72,7 @@ public class GuiContainerTFC extends GuiContainer
 
 			drawTexturedModalRect(guiLeft, guiTop, 0, 0, xSize, height);
 
-			drawForeground(guiLeft, guiTop);
+			//drawGuiContainerForegroundLayer(guiLeft, guiTop);
 		}
 		if (drawInventory)
 			PlayerInventory.drawInventory(this, width, height, this.getShiftedYSize());
@@ -82,7 +82,8 @@ public class GuiContainerTFC extends GuiContainer
 	 * Draws extra pieces on a GUI such as moving gauges and arrows.
 	 * Must be called before PlayerInventory.drawInventory() to avoid extra binding of textures.
 	 */
-	protected void drawForeground(int guiLeft, int guiTop)
+	@Override
+	protected void drawGuiContainerForegroundLayer(int mouseX, int mouseY)
 	{
 		// Intentionally blank.
 	}
@@ -109,7 +110,7 @@ public class GuiContainerTFC extends GuiContainer
 
 	public void drawTooltip(int mx, int my, List<String> list)
 	{
-		this.drawHoveringTextZLevel(list, mx, my + 15, this.fontRendererObj, 400);
+		this.drawHoveringTextZLevel(list, mx, my + 15, this.fontRenderer, 400);
 	}
 
 	protected void drawHoveringTextZLevel(List par1List, int par2, int par3, FontRenderer font, float z)

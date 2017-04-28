@@ -1,13 +1,11 @@
 package com.bioxx.tfc2.blocks.terrain;
 
-import net.minecraft.block.Block;
 import net.minecraft.block.SoundType;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.properties.IProperty;
 import net.minecraft.block.properties.PropertyEnum;
 import net.minecraft.block.state.BlockStateContainer;
 import net.minecraft.block.state.IBlockState;
-import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.init.Blocks;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
@@ -17,11 +15,13 @@ import net.minecraft.world.World;
 import net.minecraftforge.common.EnumPlantType;
 import net.minecraftforge.common.IPlantable;
 
+import com.bioxx.tfc2.Core;
 import com.bioxx.tfc2.TFCBlocks;
 import com.bioxx.tfc2.api.interfaces.ISupportBlock;
 import com.bioxx.tfc2.api.types.StoneType;
 import com.bioxx.tfc2.blocks.BlockVegetation;
 import com.bioxx.tfc2.blocks.BlockVegetation.VegType;
+import com.bioxx.tfc2.core.TFCTabs;
 import com.bioxx.tfc2.entity.EntityFallingBlockTFC;
 
 public class BlockStone extends BlockCollapsible
@@ -30,8 +30,8 @@ public class BlockStone extends BlockCollapsible
 
 	public BlockStone()
 	{
-		super(Material.GROUND, META_PROPERTY);
-		this.setCreativeTab(CreativeTabs.BUILDING_BLOCKS);
+		super(Material.ROCK, META_PROPERTY);
+		this.setCreativeTab(TFCTabs.TFCBuilding);
 		this.setSoundType(SoundType.STONE);
 		scanDepth = 10;
 		collapseType = CollapsibleType.Nature;
@@ -41,7 +41,7 @@ public class BlockStone extends BlockCollapsible
 	 * 1. Content 
 	 *******************************************************************************/
 	@Override
-	public void neighborChanged(IBlockState state, World worldIn, BlockPos pos, Block blockIn)
+	public void onNeighborChange(IBlockAccess worldIn, BlockPos pos, BlockPos blockIn)
 	{
 		IBlockState stateUp = worldIn.getBlockState(pos.up());
 		IBlockState stateDown = worldIn.getBlockState(pos.down());
@@ -53,19 +53,20 @@ public class BlockStone extends BlockCollapsible
 		if(stateUp.getBlock() != this && stateDown.getBlock() != this && stateNorth.getBlock() != this
 				&& stateSouth.getBlock() != this && stateEast.getBlock() != this && stateWest.getBlock() != this)
 		{
-			dropBlockAsItem(worldIn, pos, state, 0);
-			worldIn.setBlockToAir(pos);
+			dropBlockAsItem((World) worldIn, pos, worldIn.getBlockState(pos), 0);
+			((World)worldIn).setBlockToAir(pos);
 		}
 		else
 		{
-			super.neighborChanged(state, worldIn, pos, blockIn);
+			super.onNeighborChange(worldIn, pos, blockIn);
 		}
 	}
 
 	@Override
-	protected void onCreateFallingEntity(EntityFallingBlockTFC entity, World world, BlockPos pos)
+	protected void onCreateFallingEntity(EntityFallingBlockTFC entity, IBlockState state, World world, BlockPos pos)
 	{
-		world.setBlockState(pos, TFCBlocks.Gravel.getDefaultState().withProperty(BlockRubble.META_PROPERTY, entity.getBlock().getValue(META_PROPERTY)));
+		if(world.rand.nextFloat() < 0.5)
+			world.setBlockState(pos, TFCBlocks.Gravel.getDefaultState().withProperty(META_PROPERTY, state.getValue(META_PROPERTY)));
 	}
 
 	@Override
@@ -108,7 +109,7 @@ public class BlockStone extends BlockCollapsible
 	@Override
 	public boolean canBeSupportedBy(IBlockState myState, IBlockState otherState)
 	{
-		if(otherState.getBlock() == this || otherState.getBlock() instanceof ISupportBlock || otherState.getBlock() == Blocks.BEDROCK)
+		if(otherState.getBlock() == this || otherState.getBlock() instanceof ISupportBlock || otherState.getBlock() == Blocks.BEDROCK || Core.isSoil(otherState))
 			return true;
 		return false;
 	}
@@ -134,7 +135,7 @@ public class BlockStone extends BlockCollapsible
 		IBlockState plant = plantable.getPlant(world, pos.offset(direction));
 		EnumPlantType plantType = plantable.getPlantType(world, pos.offset(direction));
 
-		if(plantable == TFCBlocks.Vegetation && (VegType)plant.getValue(BlockVegetation.META_PROPERTY) == VegType.Grass1)
+		if(plantable == TFCBlocks.Vegetation && (VegType)plant.getValue(BlockVegetation.META_PROPERTY) == VegType.Grass)
 			return true;
 		return false;
 	}

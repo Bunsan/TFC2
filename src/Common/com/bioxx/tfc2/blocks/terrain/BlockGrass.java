@@ -10,7 +10,7 @@ import net.minecraft.block.properties.PropertyBool;
 import net.minecraft.block.properties.PropertyEnum;
 import net.minecraft.block.state.BlockStateContainer;
 import net.minecraft.block.state.IBlockState;
-import net.minecraft.creativetab.CreativeTabs;
+import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
 import net.minecraft.util.BlockRenderLayer;
 import net.minecraft.util.EnumFacing;
@@ -18,12 +18,17 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 
+import net.minecraftforge.common.EnumPlantType;
 import net.minecraftforge.common.IPlantable;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
+import com.bioxx.jmapgen.IslandMap;
 import com.bioxx.tfc2.TFCBlocks;
+import com.bioxx.tfc2.api.types.Moisture;
 import com.bioxx.tfc2.api.types.StoneType;
+import com.bioxx.tfc2.core.TFCTabs;
+import com.bioxx.tfc2.world.WorldGen;
 
 public class BlockGrass extends BlockCollapsible
 {
@@ -32,14 +37,15 @@ public class BlockGrass extends BlockCollapsible
 	public static final PropertyBool EAST = PropertyBool.create("east");
 	public static final PropertyBool SOUTH = PropertyBool.create("south");
 	public static final PropertyBool WEST = PropertyBool.create("west");
+	public static final PropertyBool SPARSE = PropertyBool.create("sparse");
 
 	public BlockGrass()
 	{
 		super(Material.GROUND, META_PROPERTY);
-		this.setCreativeTab(CreativeTabs.BUILDING_BLOCKS);
+		this.setCreativeTab(TFCTabs.TFCBuilding);
 		setSoundType(SoundType.GROUND);
 		this.setTickRandomly(true);
-		this.setDefaultState(this.blockState.getBaseState().withProperty(META_PROPERTY, StoneType.Granite).withProperty(NORTH, Boolean.valueOf(false)).withProperty(EAST, Boolean.valueOf(false)).withProperty(SOUTH, Boolean.valueOf(false)).withProperty(WEST, Boolean.valueOf(false)));
+		this.setDefaultState(this.blockState.getBaseState().withProperty(META_PROPERTY, StoneType.Granite).withProperty(NORTH, Boolean.valueOf(false)).withProperty(EAST, Boolean.valueOf(false)).withProperty(SOUTH, Boolean.valueOf(false)).withProperty(WEST, Boolean.valueOf(false)).withProperty(SPARSE, false));
 		this.collapseType = CollapsibleType.Nature;
 		this.setShowInCreative(false);
 	}
@@ -75,16 +81,16 @@ public class BlockGrass extends BlockCollapsible
 	}
 
 	@Override
-	public void neighborChanged(IBlockState state, World world, BlockPos pos, Block blockIn)
+	public void neighborChanged(IBlockState state, World worldIn, BlockPos pos, Block blockIn, BlockPos fromPos)
 	{
-		world.scheduleUpdate(pos, this, tickRate(world));
+		((World)worldIn).scheduleUpdate(pos, this, tickRate((World)worldIn));
 	}
 
 	@Override
 	public void onPlantGrow(IBlockState state, World world, BlockPos pos, BlockPos source)
 	{
-		int meta = ((Integer)state.getValue(BlockGrass.META_PROPERTY)).intValue();
-		world.setBlockState(pos, TFCBlocks.Dirt.getDefaultState().withProperty(META_PROPERTY, meta), 2);
+		StoneType stone = (StoneType)state.getValue(BlockGrass.META_PROPERTY);
+		world.setBlockState(pos, TFCBlocks.Dirt.getDefaultState().withProperty(META_PROPERTY, stone), 2);
 	}
 
 	@Override
@@ -93,13 +99,14 @@ public class BlockGrass extends BlockCollapsible
 		IBlockState plant = plantable.getPlant(world, pos.offset(direction));
 		net.minecraftforge.common.EnumPlantType plantType = plantable.getPlantType(world, pos.offset(direction));
 
-		if(plantable == TFCBlocks.Sapling)
-			return true;
-		if(plantable == TFCBlocks.Sapling2)
-			return true;
-		if(plantable == TFCBlocks.Vegetation)
+		if(plant.getBlock() == Blocks.SAPLING)
+			return false;//This may break some cross mod compatability but for now its needed to prevent vanilla and some pam trees from generating
+
+		if(plantType == EnumPlantType.Plains)
 			return true;
 
+		if(plant.getBlock() == TFCBlocks.VegDesert)
+			return true;
 		return false;
 	}
 
@@ -124,7 +131,7 @@ public class BlockGrass extends BlockCollapsible
 	@Override
 	public int getNaturalSupportRange(IBlockAccess world, BlockPos pos, IBlockState myState)
 	{
-		return 1;
+		return 3;
 	}
 
 	/*******************************************************************************
@@ -145,17 +152,22 @@ public class BlockGrass extends BlockCollapsible
 	@Override
 	protected BlockStateContainer createBlockState()
 	{
-		return new BlockStateContainer(this, new IProperty[] { META_PROPERTY, NORTH, SOUTH, EAST, WEST });
+		return new BlockStateContainer(this, new IProperty[] { META_PROPERTY, NORTH, SOUTH, EAST, WEST, SPARSE });
 	}
 
 	@Override
 	public IBlockState getActualState(IBlockState state, IBlockAccess world, BlockPos pos)
 	{
 		Block block = world.getBlockState(pos.up()).getBlock();
-		return state.withProperty(NORTH, world.getBlockState(pos.north().down()).getBlock() == TFCBlocks.Grass).withProperty(
+		IBlockState out = state.withProperty(NORTH, world.getBlockState(pos.north().down()).getBlock() == TFCBlocks.Grass).withProperty(
 				SOUTH, world.getBlockState(pos.south().down()).getBlock() == TFCBlocks.Grass).withProperty(
 						EAST, world.getBlockState(pos.east().down()).getBlock() == TFCBlocks.Grass).withProperty(
 								WEST, world.getBlockState(pos.west().down()).getBlock() == TFCBlocks.Grass);
+		IslandMap map = WorldGen.getInstance().getIslandMap(pos.getX() >> 12, pos.getZ() >> 12);
+		if(map.getParams().getIslandMoisture().equals(Moisture.LOW) &&
+				!map.getClosestCenter(pos).getMoisture().equals(Moisture.MAX))
+			out = out.withProperty(SPARSE, true);
+		return out;
 	}
 
 	@Override

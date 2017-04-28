@@ -1,7 +1,25 @@
 package com.bioxx.tfc2.core;
 
+import java.util.Iterator;
+import java.util.List;
+
+import net.minecraft.creativetab.CreativeTabs;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemFood;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.FoodStats;
+import net.minecraft.util.NonNullList;
+import net.minecraft.world.World;
+
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
+
+import com.bioxx.tfc2.api.FoodRegistry;
+import com.bioxx.tfc2.api.FoodRegistry.FoodGroupPair;
+import com.bioxx.tfc2.api.FoodRegistry.TFCFood;
+import com.bioxx.tfc2.api.interfaces.IFoodStatsTFC;
+import com.bioxx.tfc2.api.types.EnumFoodGroup;
 
 public class Food 
 {
@@ -127,8 +145,13 @@ public class Food
 		if (nbt.hasKey("Expiration"))
 			return nbt.getLong("Expiration");
 		else
-			//return (int) TFC_Time.getTotalHours(); //Removed when porting
 			return Timekeeper.getInstance().getTotalTicks();
+	}
+
+	public static boolean hasDecayTimer(ItemStack is)
+	{
+		NBTTagCompound nbt = getNBT(is);
+		return nbt.hasKey("Expiration");
 	}
 
 	public static boolean isDried(ItemStack is)
@@ -187,6 +210,65 @@ public class Food
 	public static boolean hasMealSkill(ItemStack is)
 	{
 		return is.getTagCompound().hasKey("mealSkill");
+	}
+
+	public static long getExpirationTimer(ItemStack is)
+	{
+		if(FoodRegistry.getInstance().hasKey(is.getItem(), is.getItemDamage()))
+		{
+			return Food.getExpirationTimer(FoodRegistry.getInstance().getFood(is.getItem(), is.getItemDamage()), is);
+		}
+		return -1L;
+	}
+
+	public static long getExpirationTimer(TFCFood food, ItemStack is)
+	{
+		long timer = food.expiration;
+
+		// Do decay timer altering stuff here
+
+		return timer;
+	}
+
+	@SideOnly(Side.CLIENT)
+	public static void getSubItems(Item itemIn, CreativeTabs tab, NonNullList<ItemStack> subItems)
+	{
+		ItemStack is = new ItemStack(itemIn, 1, 0);
+		long time = Food.getExpirationTimer(is);
+		if(time > 0)
+			Food.setDecayTimer(is, net.minecraft.client.Minecraft.getMinecraft().world.getWorldTime()+time);
+		subItems.add(is);
+	}
+
+	public static void addDecayTimerForCreative(World world, List<ItemStack> list)
+	{
+		for(ItemStack is : list)
+		{
+			long time = Food.getExpirationTimer(is);
+			if(time > 0 && world != null)
+				Food.setDecayTimer(is, world.getWorldTime()+time);
+		}
+	}
+
+	public static void addNutrition(FoodStats fs, ItemStack is)
+	{
+		IFoodStatsTFC stats = (IFoodStatsTFC)fs;
+		TFCFood food = FoodRegistry.getInstance().getFood(is.getItem(), is.getItemDamage());
+		if(food != null && is.getItem() instanceof ItemFood)
+		{
+			ItemFood item = (ItemFood)is.getItem();
+			Iterator iter = food.foodGroup.iterator();
+			while(iter.hasNext())
+			{
+				FoodGroupPair pair = (FoodGroupPair) iter.next();
+				float amount = pair.amount;
+				if(pair.foodGroup != EnumFoodGroup.None)
+				{
+					amount = Math.min(stats.getNutritionMap().get(pair.foodGroup) + (item.getHealAmount(is) * (pair.amount / 100f)*0.25f), 20);
+					stats.getNutritionMap().put(pair.foodGroup, amount);
+				}
+			}
+		}
 	}
 
 }

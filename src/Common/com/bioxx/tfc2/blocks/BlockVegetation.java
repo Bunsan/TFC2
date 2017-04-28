@@ -1,5 +1,6 @@
 package com.bioxx.tfc2.blocks;
 
+import java.util.List;
 import java.util.Random;
 
 import net.minecraft.block.Block;
@@ -10,9 +11,12 @@ import net.minecraft.block.properties.PropertyBool;
 import net.minecraft.block.properties.PropertyEnum;
 import net.minecraft.block.state.BlockStateContainer;
 import net.minecraft.block.state.IBlockState;
-import net.minecraft.creativetab.CreativeTabs;
+import net.minecraft.entity.item.EntityItem;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.BlockRenderLayer;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.IStringSerializable;
@@ -27,7 +31,8 @@ import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
 import com.bioxx.tfc2.Core;
-import com.bioxx.tfc2.TFCBlocks;
+import com.bioxx.tfc2.TFCItems;
+import com.bioxx.tfc2.core.TFCTabs;
 
 public class BlockVegetation extends BlockTerra implements IPlantable
 {
@@ -38,10 +43,10 @@ public class BlockVegetation extends BlockTerra implements IPlantable
 	public BlockVegetation()
 	{
 		super(Material.VINE, META_PROPERTY);
-		this.setCreativeTab(CreativeTabs.BUILDING_BLOCKS);
+		this.setCreativeTab(TFCTabs.TFCBuilding);
 		setSoundType(SoundType.GROUND);
 		this.setTickRandomly(true);
-		this.setDefaultState(this.blockState.getBaseState().withProperty(META_PROPERTY, VegType.Grass0).withProperty(IS_ON_STONE, Boolean.valueOf(false)));
+		this.setDefaultState(this.blockState.getBaseState().withProperty(META_PROPERTY, VegType.Grass).withProperty(IS_ON_STONE, Boolean.valueOf(false)));
 		float f = 0.35F;
 		this.setBlockBounds(0.5F - f, 0.0F, 0.5F - f, 0.5F + f, 0.8F, 0.5F + f);
 	}
@@ -51,10 +56,35 @@ public class BlockVegetation extends BlockTerra implements IPlantable
 	 *******************************************************************************/
 
 	@Override
-	public void neighborChanged(IBlockState state, World worldIn, BlockPos pos, Block blockIn)
+	public void neighborChanged(IBlockState state, World worldIn, BlockPos pos, Block blockIn, BlockPos fromPos)
 	{
-		super.neighborChanged(state, worldIn, pos, blockIn);
-		checkAndDropBlock(worldIn, pos, state);
+		super.neighborChanged(state, worldIn, pos, blockIn, fromPos);
+		checkAndDropBlock((World) worldIn, pos, worldIn.getBlockState(pos));
+	}
+
+	@Override
+	public void onBlockHarvested(World worldIn, BlockPos pos, IBlockState state, EntityPlayer player)
+	{
+		if(!worldIn.isRemote && player.getHeldItemMainhand().getItem() == TFCItems.StoneKnife)
+		{
+			IBlockState stateUp = worldIn.getBlockState(pos.up());
+			//This handles dropping straw for the upper double grass block when the lower is broken
+			if(stateUp.getBlock() == this)
+			{
+				EntityItem ei = new EntityItem(worldIn, pos.getX(), pos.getY()+1, pos.getZ(), new ItemStack(TFCItems.Straw, 1));
+				worldIn.spawnEntity(ei);
+			}
+		}
+	}
+
+	@Override
+	public void harvestBlock(World worldIn, EntityPlayer player, BlockPos pos, IBlockState state, TileEntity te, ItemStack stack)
+	{
+		if(!worldIn.isRemote && player.getHeldItemMainhand().getItem() == TFCItems.StoneKnife)
+		{
+			EntityItem ei = new EntityItem(worldIn, pos.getX(), pos.getY(), pos.getZ(), new ItemStack(TFCItems.Straw, 1));
+			worldIn.spawnEntity(ei);
+		}
 	}
 
 	@Override
@@ -72,11 +102,17 @@ public class BlockVegetation extends BlockTerra implements IPlantable
 		}
 	}
 
+	@Override
+	public List<ItemStack> getDrops(IBlockAccess world, BlockPos pos, IBlockState state, int fortune)
+	{
+		return super.getDrops(world, pos, state, fortune);
+	}
+
 	public boolean canBlockStay(World worldIn, BlockPos pos, IBlockState state)
 	{
 		BlockPos down = pos.down();
 		IBlockState soil = worldIn.getBlockState(down);
-		if (state.getBlock() != this) 
+		if (soil.getBlock() != this) 
 			return canPlaceBlockOn(state, soil);
 		return soil.getBlock().canSustainPlant(soil, worldIn, down, EnumFacing.UP, this);
 	}
@@ -85,8 +121,8 @@ public class BlockVegetation extends BlockTerra implements IPlantable
 	{
 		VegType veg = (VegType)state.getValue(META_PROPERTY);
 
-		if(veg == VegType.DeadBush)
-			return Core.isTerrain(soil);
+		if(veg == VegType.Cattail)
+			return Core.isWater(soil);
 
 		return Core.isSoil(soil);
 	}
@@ -102,7 +138,7 @@ public class BlockVegetation extends BlockTerra implements IPlantable
 		{
 			if(veg == VegType.DoubleGrassBottom && plant.getValue(META_PROPERTY) == VegType.DoubleGrassTop)
 				return true;
-			if(veg == VegType.DoubleFernBottom && plant.getValue(META_PROPERTY) == VegType.DoubleFernTop)
+			if(veg == VegType.DoubleGrassBottomLush && plant.getValue(META_PROPERTY) == VegType.DoubleGrassTopLush)
 				return true;
 		}
 		return false;
@@ -145,7 +181,7 @@ public class BlockVegetation extends BlockTerra implements IPlantable
 	@Override
 	public IBlockState getActualState(IBlockState state, IBlockAccess world, BlockPos pos)
 	{
-		return state.withProperty(IS_ON_STONE, world.getBlockState(pos.down()).getBlock() == TFCBlocks.Stone);
+		return state.withProperty(IS_ON_STONE, Core.isStone(world.getBlockState(pos.down())));
 	}
 
 	@Override
@@ -163,11 +199,11 @@ public class BlockVegetation extends BlockTerra implements IPlantable
 	@Override
 	public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess source, BlockPos pos)
 	{
-		return new AxisAlignedBB(0.2, 0, 0.2, 0.8, 0.75, 0.8);
+		return new AxisAlignedBB(0.1, 0, 0.1, 0.9, 0.75, 0.9);
 	}
 
 	@Override
-	public AxisAlignedBB getCollisionBoundingBox(IBlockState blockState, World worldIn, BlockPos pos)
+	public AxisAlignedBB getCollisionBoundingBox(IBlockState blockState, IBlockAccess worldIn, BlockPos pos)
 	{
 		return NULL_AABB;
 	}
@@ -192,14 +228,23 @@ public class BlockVegetation extends BlockTerra implements IPlantable
 
 	public enum VegType implements IStringSerializable
 	{
-		Grass0("grass0", 0),
-		Grass1("grass1", 1),
-		DeadBush("deadbush", 2),
+		Grass("grass", 0),
+		GrassLush("grass_lush", 1),
+		Bromeliad("bromeliad", 2),
 		DoubleGrassBottom("doublegrassbottom", 3),
 		DoubleGrassTop("doublegrasstop", 4),
 		Fern("fern", 5),
 		DoubleFernBottom("doublefernbottom", 6),
-		DoubleFernTop("doubleferntop", 7);
+		DoubleFernTop("doubleferntop", 7),
+		ShortGrass("shortgrass", 8),
+		ShorterGrass("shortergrass", 9),
+		ShortGrassLush("shortgrasslush", 10),
+		ShorterGrassLush("shortergrasslush", 11),
+		DoubleGrassBottomLush("doublegrassbottomlush", 12),
+		DoubleGrassTopLush("doublegrasstoplush", 13),
+		Toquilla("toquilla", 14),
+		Cattail("cattail", 15);
+
 
 		private String name;
 		private int meta;
@@ -234,8 +279,6 @@ public class BlockVegetation extends BlockTerra implements IPlantable
 	@Override
 	public EnumPlantType getPlantType(IBlockAccess world, BlockPos pos) 
 	{
-		if(world.getBlockState(pos).getValue(META_PROPERTY) == VegType.DeadBush)
-			return EnumPlantType.Desert;
 		return EnumPlantType.Plains;
 	}
 

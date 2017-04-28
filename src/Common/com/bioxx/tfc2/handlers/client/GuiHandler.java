@@ -13,11 +13,9 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import com.bioxx.tfc2.core.PlayerInfo;
 import com.bioxx.tfc2.core.PlayerManagerTFC;
 import com.bioxx.tfc2.entity.EntityCart;
-import com.bioxx.tfc2.gui.GuiAnvil;
-import com.bioxx.tfc2.gui.GuiCart;
-import com.bioxx.tfc2.gui.GuiInventoryTFC;
-import com.bioxx.tfc2.gui.GuiKnapping;
+import com.bioxx.tfc2.gui.*;
 import com.bioxx.tfc2.tileentities.TileAnvil;
+import com.bioxx.tfc2.tileentities.TileFirepit;
 
 public class GuiHandler extends com.bioxx.tfc2.handlers.GuiHandler
 {
@@ -44,6 +42,14 @@ public class GuiHandler extends com.bioxx.tfc2.handlers.GuiHandler
 			return new GuiCart(player.inventory, ((EntityCart)pi.entityForInventory).cartInv, world, x, y, z);
 		case 2:
 			return new GuiAnvil(player.inventory, (TileAnvil)te, world, x, y, z);
+		case 3:
+			return new GuiSkills(player);
+		case 4:
+			return new GuiHealth(player);
+		case 5:
+			return new GuiFirepit(player.inventory, (TileFirepit)te, world, x, y, z);
+		case 6:
+			return new GuiCookingPot(player.inventory, (TileFirepit)te, world, x, y, z);
 		default:
 			return null;
 		}
@@ -53,6 +59,6 @@ public class GuiHandler extends com.bioxx.tfc2.handlers.GuiHandler
 	public void openGuiHandler(GuiOpenEvent event)
 	{
 		if(event.getGui() instanceof GuiInventory && !(event.getGui() instanceof GuiInventoryTFC))
-			event.setGui(new GuiInventoryTFC(Minecraft.getMinecraft().thePlayer));
+			event.setGui(new GuiInventoryTFC(Minecraft.getMinecraft().player));
 	}
 }

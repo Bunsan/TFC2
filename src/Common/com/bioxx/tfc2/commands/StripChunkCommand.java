@@ -16,7 +16,7 @@ import com.bioxx.tfc2.TFCBlocks;
 public class StripChunkCommand extends CommandBase
 {
 	@Override
-	public String getCommandName()
+	public String getName()
 	{
 		return "stripchunk";
 	}
@@ -37,6 +37,9 @@ public class StripChunkCommand extends CommandBase
 			TFC_Core.sendInfoMessage(player, new ChatComponentText("Debug Mode Required"));
 			return;
 		}*/
+
+		if(!player.isCreative())
+			return;
 
 		if(params.length == 0)
 		{
@@ -87,7 +90,7 @@ public class StripChunkCommand extends CommandBase
 	}
 
 	@Override
-	public String getCommandUsage(ICommandSender icommandsender)
+	public String getUsage(ICommandSender icommandsender)
 	{
 		return "";
 	}

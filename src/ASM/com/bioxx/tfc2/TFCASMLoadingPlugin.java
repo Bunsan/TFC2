@@ -6,7 +6,11 @@ import java.util.Map;
 import net.minecraftforge.fml.relauncher.IFMLLoadingPlugin;
 import net.minecraftforge.fml.relauncher.IFMLLoadingPlugin.TransformerExclusions;
 
-import com.bioxx.tfc2.asm.transform.TF_EntityRenderer;
+import com.bioxx.tfc2.asm.ObfHelper;
+import com.bioxx.tfc2.asm.transform.ModuleEntityRenderer;
+import com.bioxx.tfc2.asm.transform.ModuleFood;
+import com.bioxx.tfc2.asm.transform.ModuleVanillaReplacement;
+import com.bioxx.tfc2.asm.transform.ModuleWorldGen;
 
 @TransformerExclusions({ "com.bioxx.tfc2.asm" })
 public class TFCASMLoadingPlugin implements IFMLLoadingPlugin
@@ -22,7 +26,8 @@ public class TFCASMLoadingPlugin implements IFMLLoadingPlugin
 	@Override
 	public String[] getASMTransformerClass() {
 		return new String[]{
-				TF_EntityRenderer.class.getName()
+				ModuleEntityRenderer.class.getName(), ModuleWorldGen.class.getName(), 
+				ModuleFood.class.getName(), ModuleVanillaReplacement.class.getName()
 		};
 	}
 
@@ -38,6 +43,8 @@ public class TFCASMLoadingPlugin implements IFMLLoadingPlugin
 
 	@Override
 	public void injectData(Map<String, Object> data) {
+		ObfHelper.setObfuscated((Boolean) data.get("runtimeDeobfuscationEnabled"));
+		//ObfHelper.setRunsAfterDeobfRemapper(true);
 		runtimeDeobf = (Boolean) data.get("runtimeDeobfuscationEnabled");
 		location = (File) data.get("coremodLocation");
 	}

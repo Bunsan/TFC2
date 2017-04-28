@@ -44,7 +44,7 @@ public class ContainerCart extends ContainerTFC
 	@Override
 	public ItemStack transferStackInSlotTFC(EntityPlayer player, int slotNum)
 	{
-		ItemStack origStack = null;
+		ItemStack origStack = ItemStack.EMPTY;
 		Slot slot = (Slot)this.inventorySlots.get(slotNum);
 
 		if (slot != null && slot.getHasStack())
@@ -56,23 +56,23 @@ public class ContainerCart extends ContainerTFC
 			if (slotNum < 36)
 			{
 				if (!this.mergeItemStack(slotStack, 36, inventorySlots.size(), true))
-					return null;
+					return ItemStack.EMPTY;
 			}
 			else
 			{
 				if (!this.mergeItemStack(slotStack, 0, 36, false))
-					return null;
+					return ItemStack.EMPTY;
 			}
 
-			if (slotStack.stackSize <= 0)
+			if (slotStack.getMaxStackSize() <= 0)
 				slot.putStack(null);
 			else
 				slot.onSlotChanged();
 
-			if (slotStack.stackSize == origStack.stackSize)
-				return null;
+			if (slotStack.getMaxStackSize() == origStack.getMaxStackSize())
+				return ItemStack.EMPTY;
 
-			slot.onPickupFromSlot(player, slotStack);
+			slot.onTake(player, slotStack);
 		}
 
 		return origStack;

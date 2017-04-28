@@ -11,6 +11,7 @@ import net.minecraftforge.fml.common.network.FMLNetworkEvent.ServerDisconnection
 
 import com.bioxx.jmapgen.IslandMap;
 import com.bioxx.tfc2.TFC;
+import com.bioxx.tfc2.api.util.Helper;
 import com.bioxx.tfc2.core.PlayerInfo;
 import com.bioxx.tfc2.core.PlayerManagerTFC;
 import com.bioxx.tfc2.networking.client.CMapPacket;
@@ -25,13 +26,13 @@ public class PlayerTracker
 				event.player.getName(),
 				event.player.getUniqueID()));
 
-		if(event.player.worldObj.isRemote || event.player.dimension != 0)
+		if(event.player.world.isRemote || event.player.dimension != 0)
 			return;
 		int islandX = (int)(event.player.posX) >> 12;
 		int islandZ = (int)(event.player.posZ) >> 12;
 
 		IslandMap map = WorldGen.getInstance().getIslandMap(islandX, islandZ);
-		TFC.network.sendTo(new CMapPacket(islandX, islandZ, event.player.worldObj.getSeed()+map.seed), (EntityPlayerMP)event.player);
+		TFC.network.sendTo(new CMapPacket(islandX, islandZ, event.player.world.getSeed()+Helper.combineCoords(islandX, islandZ)), (EntityPlayerMP)event.player);
 	}
 
 	@SubscribeEvent

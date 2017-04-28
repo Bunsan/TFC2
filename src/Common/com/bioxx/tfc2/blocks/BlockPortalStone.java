@@ -8,11 +8,10 @@ import net.minecraft.block.properties.IProperty;
 import net.minecraft.block.properties.PropertyEnum;
 import net.minecraft.block.state.BlockStateContainer;
 import net.minecraft.block.state.IBlockState;
-import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
-import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumFacing;
+import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
@@ -22,6 +21,7 @@ import com.bioxx.jmapgen.attributes.PortalAttribute;
 import com.bioxx.jmapgen.graph.Center;
 import com.bioxx.tfc2.TFCBlocks;
 import com.bioxx.tfc2.api.types.PortalEnumType;
+import com.bioxx.tfc2.core.TFCTabs;
 import com.bioxx.tfc2.world.WorldGen;
 
 public class BlockPortalStone extends BlockTerra
@@ -31,7 +31,7 @@ public class BlockPortalStone extends BlockTerra
 	public BlockPortalStone()
 	{
 		super(Material.GROUND, META_PROPERTY);
-		this.setCreativeTab(CreativeTabs.BUILDING_BLOCKS);
+		this.setCreativeTab(TFCTabs.TFCBuilding);
 		this.setTickRandomly(true);
 		setSoundType(SoundType.STONE);
 	}
@@ -55,7 +55,7 @@ public class BlockPortalStone extends BlockTerra
 	}
 
 	@Override
-	public boolean onBlockActivated(World worldIn, BlockPos pos, IBlockState state, EntityPlayer playerIn, net.minecraft.util.EnumHand hand, ItemStack heldItem, EnumFacing side, float hitX, float hitY, float hitZ)
+	public boolean onBlockActivated(World worldIn, BlockPos pos, IBlockState state, EntityPlayer playerIn, EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ)
 	{
 		if(!worldIn.isRemote)
 		{
@@ -97,7 +97,7 @@ public class BlockPortalStone extends BlockTerra
 			}
 		}
 
-		if(map != null)
+		if(map != null && pa != null)
 		{
 			PortalEnumType pState = map.getIslandData().getPortalState(pa.direction);
 			if(toggleGate(worldIn, pos.down(), pState))
@@ -105,21 +105,26 @@ public class BlockPortalStone extends BlockTerra
 				toggleGate(worldIn, pos.down(2), pState);
 				toggleGate(worldIn, pos.down(3), pState);
 
-				toggleGate(worldIn, pos.north().down(1), pState);
-				toggleGate(worldIn, pos.north().down(2), pState);
-				toggleGate(worldIn, pos.north().down(3), pState);
+				if(pa.direction == EnumFacing.EAST || pa.direction == EnumFacing.WEST)
+				{
+					toggleGate(worldIn, pos.north().down(1), pState);
+					toggleGate(worldIn, pos.north().down(2), pState);
+					toggleGate(worldIn, pos.north().down(3), pState);
 
-				toggleGate(worldIn, pos.south().down(1), pState);
-				toggleGate(worldIn, pos.south().down(2), pState);
-				toggleGate(worldIn, pos.south().down(3), pState);
+					toggleGate(worldIn, pos.south().down(1), pState);
+					toggleGate(worldIn, pos.south().down(2), pState);
+					toggleGate(worldIn, pos.south().down(3), pState);
+				}
+				if(pa.direction == EnumFacing.NORTH || pa.direction == EnumFacing.SOUTH)
+				{
+					toggleGate(worldIn, pos.east().down(1), pState);
+					toggleGate(worldIn, pos.east().down(2), pState);
+					toggleGate(worldIn, pos.east().down(3), pState);
 
-				toggleGate(worldIn, pos.east().down(1), pState);
-				toggleGate(worldIn, pos.east().down(2), pState);
-				toggleGate(worldIn, pos.east().down(3), pState);
-
-				toggleGate(worldIn, pos.west().down(1), pState);
-				toggleGate(worldIn, pos.west().down(2), pState);
-				toggleGate(worldIn, pos.west().down(3), pState);
+					toggleGate(worldIn, pos.west().down(1), pState);
+					toggleGate(worldIn, pos.west().down(2), pState);
+					toggleGate(worldIn, pos.west().down(3), pState);
+				}
 			}
 		}
 	}

@@ -3,7 +3,6 @@ package com.bioxx.tfc2.blocks;
 import java.util.Arrays;
 import java.util.Random;
 
-import net.minecraft.block.Block;
 import net.minecraft.block.SoundType;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.properties.IProperty;
@@ -12,7 +11,6 @@ import net.minecraft.block.properties.PropertyEnum;
 import net.minecraft.block.properties.PropertyHelper;
 import net.minecraft.block.state.BlockStateContainer;
 import net.minecraft.block.state.IBlockState;
-import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
@@ -27,6 +25,7 @@ import com.bioxx.tfc2.api.interfaces.INeedOffset;
 import com.bioxx.tfc2.api.interfaces.ISupportBlock;
 import com.bioxx.tfc2.api.types.WoodType;
 import com.bioxx.tfc2.blocks.terrain.BlockCollapsible;
+import com.bioxx.tfc2.core.TFCTabs;
 
 public class BlockWoodSupport extends BlockCollapsible implements ISupportBlock, INeedOffset
 {
@@ -40,7 +39,7 @@ public class BlockWoodSupport extends BlockCollapsible implements ISupportBlock,
 	public BlockWoodSupport() 
 	{
 		this(Material.WOOD, META_PROPERTY);
-		this.setCreativeTab(CreativeTabs.BUILDING_BLOCKS);
+		this.setCreativeTab(TFCTabs.TFCBuilding);
 		this.setDefaultState(this.blockState.getBaseState().withProperty(META_PROPERTY, WoodType.Oak).
 				withProperty(SPAN, Boolean.valueOf(false)).
 				withProperty(NORTH_CONNECTION, Boolean.valueOf(false)).
@@ -52,6 +51,7 @@ public class BlockWoodSupport extends BlockCollapsible implements ISupportBlock,
 	protected BlockWoodSupport(Material material, PropertyHelper meta)
 	{
 		super(material, meta);
+		this.setCreativeTab(TFCTabs.TFCBuilding);
 		compressionBreak = true;
 		this.collapseType = CollapsibleType.Structure;
 		setSoundType(SoundType.WOOD);
@@ -65,14 +65,6 @@ public class BlockWoodSupport extends BlockCollapsible implements ISupportBlock,
 	public int getNaturalSupportRange(IBlockAccess world, BlockPos pos, IBlockState myState)
 	{
 		return ((WoodType)myState.getValue(META_PROPERTY)).getSupportRange();
-	}
-
-	@Override
-	public boolean canBeSupportedBy(IBlockState myState, IBlockState otherState)
-	{
-		if(otherState.getBlock() == this || Core.isSoil(otherState) || Core.isStone(otherState) || otherState.getBlock() instanceof ISupportBlock)
-			return true;
-		return false;
 	}
 
 	@Override
@@ -92,7 +84,7 @@ public class BlockWoodSupport extends BlockCollapsible implements ISupportBlock,
 	{
 		world.setBlockToAir(pos);
 		EntityItem ei = new EntityItem(world, pos.getX(), pos.getY(), pos.getZ(), new ItemStack(Items.STICK, 1+world.rand.nextInt(3)));
-		world.spawnEntityInWorld(ei);
+		world.spawnEntity(ei);
 	}
 
 	@Override
@@ -231,23 +223,23 @@ public class BlockWoodSupport extends BlockCollapsible implements ISupportBlock,
 	}
 
 	@Override
-	public void neighborChanged(IBlockState state, World world, BlockPos pos, Block blockIn)
+	public void onNeighborChange(IBlockAccess world, BlockPos pos, BlockPos blockIn)
 	{
-		state = getActualState(state, world, pos);
+		IBlockState state = getActualState(world.getBlockState(pos), world, pos);
 		if(state.getValue(SPAN))
 		{
 			if(state.getValue(EAST_CONNECTION) != state.getValue(WEST_CONNECTION) || state.getValue(NORTH_CONNECTION) != state.getValue(SOUTH_CONNECTION))
 			{
-				this.createFallingEntity(world, pos, state);
+				this.createFallingEntity((World) world, pos, state);
 				return;
 			}
 			else if(!state.getValue(EAST_CONNECTION) && !state.getValue(WEST_CONNECTION) && !state.getValue(NORTH_CONNECTION) && !state.getValue(SOUTH_CONNECTION))
 			{
-				this.createFallingEntity(world, pos, state);
+				this.createFallingEntity((World) world, pos, state);
 				return;
 			}
 		}
-		super.neighborChanged(state, world, pos, blockIn);
+		super.onNeighborChange(world, pos, blockIn);
 	}
 
 	/*******************************************************************************

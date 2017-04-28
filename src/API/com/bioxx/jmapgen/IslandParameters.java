@@ -2,6 +2,7 @@ package com.bioxx.jmapgen;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.Iterator;
 import java.util.Random;
 
 import net.minecraft.nbt.NBTTagCompound;
@@ -21,6 +22,7 @@ import com.bioxx.tfc2.api.types.WoodType;
 public class IslandParameters 
 {
 	protected Module shapeModule;
+	protected Module edgeModule;
 	double oceanRatio = 0.5;
 	public double lakeThreshold = 0.3;
 	int SIZE = 4096;
@@ -49,7 +51,7 @@ public class IslandParameters
 
 	public IslandParameters (long seed, int size, double oceans) 
 	{
-		this(seed, size, oceans, 0.3);
+		this(seed, size, oceans, 0.8);
 	}
 
 	// The Perlin-based island combines perlin noise with the radius
@@ -69,7 +71,7 @@ public class IslandParameters
 		Perlin modulePerl = new Perlin();
 		modulePerl.setSeed(seed);
 		modulePerl.setFrequency(0.00058);
-		modulePerl.setPersistence(0.7);
+		modulePerl.setPersistence(0.65);
 		modulePerl.setLacunarity(2.0);
 		modulePerl.setOctaveCount(5);
 		modulePerl.setNoiseQuality(NoiseQuality.BEST);
@@ -86,13 +88,43 @@ public class IslandParameters
 		sb2.setScale(0.25);
 
 		shapeModule = sb2;
+
+
+		Perlin modulePerl2 = new Perlin();
+		modulePerl2.setSeed(seed);
+		modulePerl2.setFrequency(0.58);
+		modulePerl2.setPersistence(0.25);
+		modulePerl2.setOctaveCount(3);
+
+		edgeModule = modulePerl2;
 	}
 
-	public boolean insidePerlin(Point q)
+	public boolean insidePerlin(Point q, boolean clamp)
 	{
 		Point np = new Point(2.3*(q.x/SIZE - 0.5), 2.3*(q.y/SIZE - 0.5));
 		double height = shapeModule.GetValue(q.x, 0, q.y);
+
+		double angle = getAngle(np);
+		double dist = 0.15 * edgeModule.GetValue(0, angle, 0);
+
+		double distOrigin = np.distance(Point.ORIGIN);
+
+		if(clamp && distOrigin < 0.65+dist)
+			return true;
+		if(clamp && distOrigin > 0.95+dist)
+			return false;
+
 		return height > oceanRatio+oceanRatio*np.getLength()*np.getLength();
+	}
+
+	private double getAngle(Point p)
+	{
+		double theta = Math.toDegrees(Math.atan2(p.y, p.x));
+
+		if (theta < 0.0) {
+			theta += 360.0;
+		}
+		return theta;
 	}
 
 	public int getXCoord()
@@ -128,6 +160,19 @@ public class IslandParameters
 	public boolean hasFeature(Feature feat)
 	{
 		return features.contains(feat);
+	}
+
+	public String featuresToString()
+	{
+		String s = "[";
+		Iterator<Feature> iter = features.iterator();
+		while(iter.hasNext())
+		{
+			Feature f = iter.next();
+			s += f.name() + ", ";
+		}
+		s+= "]";
+		return s;
 	}
 
 	public void setCoords(int x, int z) 
@@ -210,6 +255,8 @@ public class IslandParameters
 		return false;
 	}
 
+
+
 	public void readFromNBT(NBTTagCompound nbt)
 	{
 		NBTTagCompound fnbt = nbt.getCompoundTag("features");
@@ -287,7 +334,7 @@ public class IslandParameters
 	{
 		Gorges(1, "Gorges"), 
 		Volcano(0.001, "Volcano"), 
-		Cliffs(1, "Cliffs"), 
+		Cliffs(0.75, "Cliffs"), 
 		SharperMountains(1, "Sharper Mountains"), 
 		EvenSharperMountains(1, "Even Sharper Mountains"), 
 		Valleys(0.6, "Valleys"), 
@@ -301,7 +348,11 @@ public class IslandParameters
 		NutrientRich(0.5,"Nutrient Rich", FeatureSig.Minor),
 		Desert(0.0,"Desert", false),
 		DiverseCrops(0.5,"Diverse Crops", FeatureSig.Minor),
-		RampantWildAnimals(0.25,"Rampant Wild Animals", FeatureSig.Minor);
+		RampantWildAnimals(0.25,"Rampant Wild Animals", FeatureSig.Minor),
+		Mesas(0.25,"Mesas"),
+		DoubleCaves(0.25,"DoubleCaves"),
+		TripleCaves(0.10,"TripleCaves");
+
 
 		public final double rarity;
 		private String name;

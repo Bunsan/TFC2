@@ -11,6 +11,7 @@ import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
 
 import com.bioxx.jmapgen.IslandMap;
 import com.bioxx.tfc2.TFC;
+import com.bioxx.tfc2.api.util.Helper;
 import com.bioxx.tfc2.networking.client.CMapPacket;
 import com.bioxx.tfc2.world.WorldGen;
 
@@ -48,7 +49,7 @@ public class SMapRequestPacket implements IMessage
 	{
 		@Override
 		public IMessage onMessage(final SMapRequestPacket message, final MessageContext ctx) {
-			IThreadListener mainThread = (WorldServer) ctx.getServerHandler().playerEntity.worldObj; // or Minecraft.getMinecraft() on the client
+			IThreadListener mainThread = (WorldServer) ctx.getServerHandler().player.world; // or Minecraft.getMinecraft() on the client
 			mainThread.addScheduledTask(new Runnable() 
 			{
 				@Override
@@ -56,7 +57,8 @@ public class SMapRequestPacket implements IMessage
 				{
 					int j;
 					IslandMap map = WorldGen.getInstance().getIslandMap(message.islandX, message.islandZ);
-					TFC.network.sendTo(new CMapPacket(message.islandX, message.islandZ, map.seed), ctx.getServerHandler().playerEntity);
+					long seed = ctx.getServerHandler().player.world.getSeed()+Helper.combineCoords(message.islandX, message.islandZ);
+					TFC.network.sendTo(new CMapPacket(message.islandX, message.islandZ, seed), ctx.getServerHandler().player);
 				}
 			});
 			return null; // no response in this case

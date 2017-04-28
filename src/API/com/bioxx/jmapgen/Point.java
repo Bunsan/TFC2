@@ -6,6 +6,7 @@ import net.minecraft.util.math.BlockPos;
 
 public class Point extends Point2D
 {
+	public static final Point ORIGIN = new Point(0,0);
 	public double x, y;
 
 	public Point()
@@ -18,6 +19,12 @@ public class Point extends Point2D
 	{
 		x = X;
 		y = Y;
+	}
+
+	public Point(BlockPos pos)
+	{
+		x = pos.getX();
+		y = pos.getZ();
 	}
 
 	@Override

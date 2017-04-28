@@ -7,6 +7,7 @@ import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.VertexBuffer;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
+import net.minecraft.init.Items;
 import net.minecraft.util.ResourceLocation;
 
 import org.lwjgl.opengl.GL11;
@@ -46,6 +47,13 @@ public class GuiKnappingButton extends GuiButton
 					//Same as drawTexturedModalRect except we need to set the UV ourselves
 					drawLocal();
 				}
+				else if(pi.specialCraftingType.getItem() == Items.CLAY_BALL)
+				{
+					Core.bindTexture(new ResourceLocation(Reference.ModID, "textures/items/pottery/clay flat light.png"));
+
+					//Same as drawTexturedModalRect except we need to set the UV ourselves
+					drawLocal();
+				}
 				else
 				{
 					Minecraft.getMinecraft().getRenderItem().renderItemAndEffectIntoGUI(pi.specialCraftingType, xPosition, yPosition);
@@ -61,6 +69,13 @@ public class GuiKnappingButton extends GuiButton
 					//Same as drawTexturedModalRect except we need to set the UV ourselves
 					drawLocal();
 				}
+				else if(pi.specialCraftingType.getItem() == Items.CLAY_BALL)
+				{
+					Core.bindTexture(new ResourceLocation(Reference.ModID, "textures/items/pottery/clay flat dark.png"));
+					GL11.glColor4f(1f, 1f, 1f, 1.0f);
+					//Same as drawTexturedModalRect except we need to set the UV ourselves
+					drawLocal();
+				}
 				else
 				{
 					Minecraft.getMinecraft().getRenderItem().renderItemAndEffectIntoGUI(pi.specialCraftingTypeAlternate, xPosition, yPosition);
@@ -71,9 +86,11 @@ public class GuiKnappingButton extends GuiButton
 			{
 				Core.bindTexture(GuiKnapping.texture);
 
-				GL11.glColor4f(1f, 1f, 1f, 0.2f);
+				GL11.glColor4f(1.0f, 1.0f, 1.0f, 0.4f);
 				GlStateManager.enableBlend();
+				//GlStateManager.colorMask(false, true, true, true);
 				this.drawTexturedModalRect(this.xPosition, this.yPosition, 0, 239, 16, 16);
+				//GlStateManager.colorMask(true, true, true, true);
 				GlStateManager.disableBlend();
 			}
 
@@ -103,7 +120,9 @@ public class GuiKnappingButton extends GuiButton
 	@Override
 	public void playPressSound(SoundHandler paramSoundHandler)
 	{
-		paramSoundHandler.playSound(net.minecraft.client.audio.PositionedSoundRecord.getMasterRecord(TFC_Sounds.KNAPPING, 1.0F));
+		PlayerInfo pi = PlayerManagerTFC.getInstance().getClientPlayer();
+		if(pi.specialCraftingType.getItem() == TFCItems.LooseRock)
+			paramSoundHandler.playSound(net.minecraft.client.audio.PositionedSoundRecord.getMasterRecord(TFC_Sounds.KNAPPING, 1.0F));
 	}
 
 	public void highlight(boolean b)

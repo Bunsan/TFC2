@@ -16,7 +16,7 @@ public class TeleportInIslandCommand extends CommandBase
 
 	}
 	@Override
-	public String getCommandName()
+	public String getName()
 	{
 		return "tpi";
 	}
@@ -32,6 +32,9 @@ public class TeleportInIslandCommand extends CommandBase
 			e.printStackTrace();
 		}
 		WorldServer world = server.worldServerForDimension(player.getEntityWorld().provider.getDimension());
+
+		if(!player.isCreative())
+			return;
 
 		if(params.length == 3)
 		{
@@ -67,7 +70,7 @@ public class TeleportInIslandCommand extends CommandBase
 	}
 
 	@Override
-	public String getCommandUsage(ICommandSender icommandsender)
+	public String getUsage(ICommandSender icommandsender)
 	{
 		return "";
 	}

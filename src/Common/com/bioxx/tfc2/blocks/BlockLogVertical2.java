@@ -9,6 +9,7 @@ import net.minecraft.block.state.BlockStateContainer;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.util.EnumFacing;
+import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
@@ -45,7 +46,7 @@ public class BlockLogVertical2 extends BlockLogVertical implements INeedOffset
 	}
 
 	@Override
-	public IBlockState onBlockPlaced(World worldIn, BlockPos pos, EnumFacing facing, float hitX, float hitY, float hitZ, int meta, EntityLivingBase placer)
+	public IBlockState getStateForPlacement(World worldIn, BlockPos pos, EnumFacing facing, float hitX, float hitY, float hitZ, int meta, EntityLivingBase placer, EnumHand hand)
 	{
 		if(facing == EnumFacing.DOWN || facing == EnumFacing.UP)
 			return this.getStateFromMeta(meta);
@@ -72,5 +73,11 @@ public class BlockLogVertical2 extends BlockLogVertical implements INeedOffset
 	public int convertMetaToItem(int meta) 
 	{
 		return meta + 16;
+	}
+
+	@Override
+	public int damageDropped(IBlockState state)
+	{
+		return getMetaFromState(state) + 16;
 	}
 }

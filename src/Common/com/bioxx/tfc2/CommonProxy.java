@@ -20,7 +20,9 @@ import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import net.minecraftforge.fml.common.network.NetworkRegistry;
 import net.minecraftforge.fml.common.registry.EntityRegistry;
+import net.minecraftforge.fml.common.registry.ForgeRegistries;
 import net.minecraftforge.fml.common.registry.GameRegistry;
+import net.minecraftforge.oredict.OreDictionary;
 
 import com.bioxx.jmapgen.IslandMap;
 import com.bioxx.jmapgen.attributes.Attribute;
@@ -31,13 +33,11 @@ import com.bioxx.jmapgen.graph.Center.Marker;
 import com.bioxx.tfc2.api.*;
 import com.bioxx.tfc2.api.AnimalSpawnRegistry.SpawnGroup;
 import com.bioxx.tfc2.api.AnimalSpawnRegistry.SpawnParameters;
+import com.bioxx.tfc2.api.SkillsManager.Skill;
 import com.bioxx.tfc2.api.ore.OreConfig;
 import com.bioxx.tfc2.api.ore.OreConfig.VeinType;
 import com.bioxx.tfc2.api.ore.OreRegistry;
-import com.bioxx.tfc2.api.types.ClimateTemp;
-import com.bioxx.tfc2.api.types.Moisture;
-import com.bioxx.tfc2.api.types.OreType;
-import com.bioxx.tfc2.api.types.StoneType;
+import com.bioxx.tfc2.api.types.*;
 import com.bioxx.tfc2.core.FluidTFC;
 import com.bioxx.tfc2.core.Recipes;
 import com.bioxx.tfc2.core.TFC_Sounds;
@@ -45,21 +45,17 @@ import com.bioxx.tfc2.entity.*;
 import com.bioxx.tfc2.entity.EntityBear.BearType;
 import com.bioxx.tfc2.entity.EntityTiger.TigerType;
 import com.bioxx.tfc2.handlers.*;
+import com.bioxx.tfc2.handlers.client.DrinkWaterHandler;
+import com.bioxx.tfc2.potion.PotionTFC;
 import com.bioxx.tfc2.world.DimensionTFC;
-import com.bioxx.tfc2.world.generators.WorldGenGrass;
-import com.bioxx.tfc2.world.generators.WorldGenLooseRock;
-import com.bioxx.tfc2.world.generators.WorldGenPortals;
-import com.bioxx.tfc2.world.generators.WorldGenTrees;
+import com.bioxx.tfc2.world.generators.*;
 
 public class CommonProxy
 {
 	public void preInit(FMLPreInitializationEvent event)
 	{
 		TFC_Sounds.register();
-		GameRegistry.registerWorldGenerator(new WorldGenPortals(), 0);
-		GameRegistry.registerWorldGenerator(new WorldGenTrees(), 10);
-		GameRegistry.registerWorldGenerator(new WorldGenGrass(), 100);
-		GameRegistry.registerWorldGenerator(new WorldGenLooseRock(), 5);
+		registerWorldGen();
 
 		DimensionManager.unregisterDimension(0);
 		DimensionManager.registerDimension(0, DimensionTFC.SURFACE);
@@ -76,13 +72,20 @@ public class CommonProxy
 		TFCBlocks.RegisterBlocks();
 		TFCBlocks.RegisterTileEntites();
 		TFCItems.Load();
+		TFCItems.SetupCreativeTabs();
 		TFCItems.Register();
 		registerCropProduce();//Must run after item setup
 		setupOre();
+		registerOreDictionary();
 
-		TFCFluids.SALTWATER.setUnlocalizedName(TFCBlocks.SaltWater.getUnlocalizedName());//Must run after block setup
-		TFCFluids.FRESHWATER.setUnlocalizedName(TFCBlocks.FreshWater.getUnlocalizedName());//Must run after block setup
-
+		SkillsManager.instance.registerSkill(new Skill("gui.skill.woodworker", 1.0f, 1f));
+		SkillsManager.instance.registerSkill(new Skill("gui.skill.smith", 1.0f, 1f));
+		SkillsManager.instance.registerSkill(new Skill("gui.skill.toolsmith", 1.0f, 10f));
+		SkillsManager.instance.registerSkill(new Skill("gui.skill.weaponsmith", 1.0f, 10f));
+		SkillsManager.instance.registerSkill(new Skill("gui.skill.armorsmith", 1.0f, 10f));
+		SkillsManager.instance.registerSkill(new Skill("gui.skill.farmer", 1.0f, 1f));
+		SkillsManager.instance.registerSkill(new Skill("gui.skill.fisherman", 1.0f, 1f));
+		SkillsManager.instance.registerSkill(new Skill("gui.skill.butcher", 1.0f, 1f));
 	}
 
 	public void init(FMLInitializationEvent event)
@@ -93,42 +96,67 @@ public class CommonProxy
 		Global.EVENT_BUS.register(new CreateDungeonHandler());
 
 		registerEntities();
+
+		ForgeRegistries.POTIONS.register(PotionTFC.THIRST_POTION);
+	}
+
+	protected void registerWorldGen()
+	{
+		GameRegistry.registerWorldGenerator(new WorldGenCliffNoise(), 0);
+		GameRegistry.registerWorldGenerator(new WorldGenCliffRocks(), 0);
+		GameRegistry.registerWorldGenerator(new WorldGenPortals(), 2);
+		GameRegistry.registerWorldGenerator(new WorldGenStalag(), 4);
+		GameRegistry.registerWorldGenerator(new WorldGenLooseRock(), 5);
+		GameRegistry.registerWorldGenerator(new WorldGenClay(), 5);
+		GameRegistry.registerWorldGenerator(new WorldGenPamsGardens(), 25);
+		GameRegistry.registerWorldGenerator(new WorldGenTrees(), 10);
+		GameRegistry.registerWorldGenerator(new WorldGenCatTails(), 100);
+		GameRegistry.registerWorldGenerator(new WorldGenGrass(), 100);
+		GameRegistry.registerWorldGenerator(new WorldGenGrassDry(), 100);
+
 	}
 
 	protected void registerEntities() 
 	{
 		DataSerializersTFC.register();
-		EntityRegistry.registerModEntity(EntityCart.class, "Cart", 0, TFC.instance, 80, 3, true, 0x000000, 0x00ff00);
-		EntityRegistry.registerModEntity(EntityBear.class, "Bear", 1, TFC.instance, 80, 3, true, 0x000000, 0xff0000);
-		EntityRegistry.registerModEntity(EntityBearPanda.class, "BearPanda", 2, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
-		EntityRegistry.registerModEntity(EntityLion.class, "Lion", 3, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
-		EntityRegistry.registerModEntity(EntityTiger.class, "Tiger", 4, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
-		EntityRegistry.registerModEntity(EntityRhino.class, "Rhino", 5, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
-		EntityRegistry.registerModEntity(EntityElephant.class, "Elephant", 6, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
-		EntityRegistry.registerModEntity(EntityMammoth.class, "Mammoth", 7, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
-		EntityRegistry.registerModEntity(EntityBoar.class, "Boar", 8, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
-		EntityRegistry.registerModEntity(EntityBison.class, "Bison", 9, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
-		EntityRegistry.registerModEntity(EntityFoxRed.class, "FoxRed", 10, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
-		EntityRegistry.registerModEntity(EntityFoxArctic.class, "FoxArctic", 11, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
-		EntityRegistry.registerModEntity(EntityFoxDesert.class, "FoxDesert", 12, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
-		EntityRegistry.registerModEntity(EntityHippo.class, "Hippo", 13, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
-		EntityRegistry.registerModEntity(EntityBigCat.class, "BigCat", 14, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
-		EntityRegistry.registerModEntity(EntitySabertooth.class, "Sabertooth", 15, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
-		EntityRegistry.registerModEntity(EntityElk.class, "Elk", 16, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
+		EntityRegistry.registerModEntity(Core.CreateRes(Reference.getResID()+"Cart"), EntityCart.class, "Cart", 0, TFC.instance, 80, 3, true, 0x000000, 0x00ff00);
+		EntityRegistry.registerModEntity(Core.CreateRes(Reference.getResID()+"Bear"), EntityBear.class, "Bear", 1, TFC.instance, 80, 3, true, 0x000000, 0xff0000);
+		EntityRegistry.registerModEntity(Core.CreateRes(Reference.getResID()+"BearPanda"), EntityBearPanda.class, "BearPanda", 2, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
+		EntityRegistry.registerModEntity(Core.CreateRes(Reference.getResID()+"Lion"), EntityLion.class, "Lion", 3, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
+		EntityRegistry.registerModEntity(Core.CreateRes(Reference.getResID()+"Tiger"), EntityTiger.class, "Tiger", 4, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
+		EntityRegistry.registerModEntity(Core.CreateRes(Reference.getResID()+"Rhino"), EntityRhino.class, "Rhino", 5, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
+		EntityRegistry.registerModEntity(Core.CreateRes(Reference.getResID()+"Elephant"), EntityElephant.class, "Elephant", 6, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
+		EntityRegistry.registerModEntity(Core.CreateRes(Reference.getResID()+"Mammoth"), EntityMammoth.class, "Mammoth", 7, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
+		EntityRegistry.registerModEntity(Core.CreateRes(Reference.getResID()+"Boar"), EntityBoar.class, "Boar", 8, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
+		EntityRegistry.registerModEntity(Core.CreateRes(Reference.getResID()+"Bison"), EntityBison.class, "Bison", 9, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
+		EntityRegistry.registerModEntity(Core.CreateRes(Reference.getResID()+"FoxRed"), EntityFoxRed.class, "FoxRed", 10, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
+		EntityRegistry.registerModEntity(Core.CreateRes(Reference.getResID()+"FoxArctic"), EntityFoxArctic.class, "FoxArctic", 11, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
+		EntityRegistry.registerModEntity(Core.CreateRes(Reference.getResID()+"FoxDesert"), EntityFoxDesert.class, "FoxDesert", 12, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
+		EntityRegistry.registerModEntity(Core.CreateRes(Reference.getResID()+"Hippo"), EntityHippo.class, "Hippo", 13, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
+		EntityRegistry.registerModEntity(Core.CreateRes(Reference.getResID()+"BigCat"), EntityBigCat.class, "BigCat", 14, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
+		EntityRegistry.registerModEntity(Core.CreateRes(Reference.getResID()+"Sabertooth"), EntitySabertooth.class, "Sabertooth", 15, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
+		EntityRegistry.registerModEntity(Core.CreateRes(Reference.getResID()+"Elk"), EntityElk.class, "Elk", 16, TFC.instance, 80, 3, true, 0x000000, 0xffffff);
 	}
 
 	public void postInit(FMLPostInitializationEvent event)
 	{
+		Recipes.RegisterNormalRecipes();
 		Recipes.RegisterKnappingRecipes();
+		Recipes.RegisterKilnRecipes();
 		MinecraftForge.EVENT_BUS.register(new CreateSpawnHandler());
 		MinecraftForge.EVENT_BUS.register(new WorldLoadHandler());
 		MinecraftForge.EVENT_BUS.register(new EntityLivingHandler());
 		MinecraftForge.EVENT_BUS.register(new JoinWorldHandler());
 		MinecraftForge.EVENT_BUS.register(new ChunkLoadHandler());
 		MinecraftForge.EVENT_BUS.register(new ServerTickHandler());
+		MinecraftForge.EVENT_BUS.register(new DrinkWaterHandler());
+		MinecraftForge.EVENT_BUS.register(new BlockHarvestHandler());
+		MinecraftForge.EVENT_BUS.register(new TeleportHandler());
 		Global.EVENT_BUS.register(new HexUpdateHandler());
 		Global.EVENT_BUS.register(new IslandUpdateHandler());
 		registerAnimals();
+		registerFuel();
+
 	}
 
 	protected void setupOre()
@@ -162,14 +190,14 @@ public class CommonProxy
 
 	protected void registerCropProduce()
 	{
-		FoodRegistry.getInstance().registerCropProduce(Crop.Corn, new ItemStack(TFCItems.FoodCornWhole, 1, 0));
+		/*FoodRegistry.getInstance().registerCropProduce(Crop.Corn, new ItemStack(TFCItems.FoodCornWhole, 1, 0));
 		FoodRegistry.getInstance().registerCropProduce(Crop.Cabbage, new ItemStack(TFCItems.FoodCabbage, 1, 0));
 		FoodRegistry.getInstance().registerCropProduce(Crop.Tomato, new ItemStack(TFCItems.FoodTomato, 1, 0));
 		FoodRegistry.getInstance().registerCropProduce(Crop.Wheat, new ItemStack(TFCItems.FoodWheatWhole, 1, 0));
 		FoodRegistry.getInstance().registerCropProduce(Crop.Barley, new ItemStack(TFCItems.FoodBarleyWhole, 1, 0));
 		FoodRegistry.getInstance().registerCropProduce(Crop.Rye, new ItemStack(TFCItems.FoodRyeWhole, 1, 0));
 		FoodRegistry.getInstance().registerCropProduce(Crop.Oat, new ItemStack(TFCItems.FoodOatWhole, 1, 0));
-		FoodRegistry.getInstance().registerCropProduce(Crop.Rice, new ItemStack(TFCItems.FoodRiceWhole, 1, 0));
+		FoodRegistry.getInstance().registerCropProduce(Crop.Rice, new ItemStack(TFCItems.FoodRiceWhole, 1, 0));*/
 	}
 
 	protected void registerAnimals()
@@ -324,6 +352,41 @@ public class CommonProxy
 				return isValid;
 			}
 		}));
+	}
+
+	protected void registerFuel()
+	{
+		Global.AddFirepitFuel(new ItemStack(TFCBlocks.LogVertical2, 1, WoodType.Rosewood.getMeta()), 2000);
+		Global.AddFirepitFuel(new ItemStack(TFCBlocks.LogVertical2, 1, WoodType.Blackwood.getMeta()), 2000);
+		Global.AddFirepitFuel(new ItemStack(TFCBlocks.LogVertical2, 1, WoodType.Palm.getMeta()), 2000);
+		Global.AddFirepitFuel(new ItemStack(TFCBlocks.LogVertical, 1, WoodType.Acacia.getMeta()), 2000);
+		Global.AddFirepitFuel(new ItemStack(TFCBlocks.LogVertical, 1, WoodType.Ash.getMeta()), 2000);
+		Global.AddFirepitFuel(new ItemStack(TFCBlocks.LogVertical, 1, WoodType.Aspen.getMeta()), 2000);
+		Global.AddFirepitFuel(new ItemStack(TFCBlocks.LogVertical, 1, WoodType.Birch.getMeta()), 2000);
+		Global.AddFirepitFuel(new ItemStack(TFCBlocks.LogVertical, 1, WoodType.Chestnut.getMeta()), 2000);
+		Global.AddFirepitFuel(new ItemStack(TFCBlocks.LogVertical, 1, WoodType.DouglasFir.getMeta()), 2000);
+		Global.AddFirepitFuel(new ItemStack(TFCBlocks.LogVertical, 1, WoodType.Hickory.getMeta()), 2000);
+		Global.AddFirepitFuel(new ItemStack(TFCBlocks.LogVertical, 1, WoodType.Kapok.getMeta()), 2000);
+		Global.AddFirepitFuel(new ItemStack(TFCBlocks.LogVertical, 1, WoodType.Maple.getMeta()), 2000);
+		Global.AddFirepitFuel(new ItemStack(TFCBlocks.LogVertical, 1, WoodType.Oak.getMeta()), 2000);
+		Global.AddFirepitFuel(new ItemStack(TFCBlocks.LogVertical, 1, WoodType.Pine.getMeta()), 2000);
+		Global.AddFirepitFuel(new ItemStack(TFCBlocks.LogVertical, 1, WoodType.Sequoia.getMeta()), 2000);
+		Global.AddFirepitFuel(new ItemStack(TFCBlocks.LogVertical, 1, WoodType.Spruce.getMeta()), 2000);
+		Global.AddFirepitFuel(new ItemStack(TFCBlocks.LogVertical, 1, WoodType.Sycamore.getMeta()), 2000);
+		Global.AddFirepitFuel(new ItemStack(TFCBlocks.LogVertical, 1, WoodType.WhiteCedar.getMeta()), 2000);
+		Global.AddFirepitFuel(new ItemStack(TFCBlocks.LogVertical, 1, WoodType.Willow.getMeta()), 2000);
+	}
+
+	protected void registerOreDictionary()
+	{
+		OreDictionary.registerOre("logWood", new ItemStack(TFCBlocks.LogVertical, 1, OreDictionary.WILDCARD_VALUE));
+		OreDictionary.registerOre("logWood", new ItemStack(TFCBlocks.LogVertical2, 1, OreDictionary.WILDCARD_VALUE));
+		OreDictionary.registerOre("logWood", new ItemStack(TFCBlocks.LogHorizontal, 1, OreDictionary.WILDCARD_VALUE));
+		OreDictionary.registerOre("logWood", new ItemStack(TFCBlocks.LogHorizontal2, 1, OreDictionary.WILDCARD_VALUE));
+		OreDictionary.registerOre("logWood", new ItemStack(TFCBlocks.LogHorizontal3, 1, OreDictionary.WILDCARD_VALUE));
+		OreDictionary.registerOre("logWood", new ItemStack(TFCBlocks.LogNatural, 1, OreDictionary.WILDCARD_VALUE));
+		OreDictionary.registerOre("logWood", new ItemStack(TFCBlocks.LogNatural2, 1, OreDictionary.WILDCARD_VALUE));
+		OreDictionary.registerOre("logWood", new ItemStack(TFCBlocks.LogNaturalPalm, 1, OreDictionary.WILDCARD_VALUE));
 	}
 
 	public void registerGuiHandler()

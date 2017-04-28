@@ -2,10 +2,13 @@ package com.bioxx.tfc2.items;
 
 import java.util.List;
 
+import com.bioxx.tfc2.core.TFCTabs;
+
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.NonNullList;
 
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
@@ -19,15 +22,13 @@ public class ItemTerra extends Item
 
 	public ItemTerra()
 	{
-		this.setCreativeTab(CreativeTabs.MISC);
+		this.setCreativeTab(TFCTabs.TFCMisc);
 	}
 
 	@Override
 	public void addInformation(ItemStack is, EntityPlayer player, List arraylist, boolean flag)
 	{
 		super.addInformation(is, player, arraylist, flag);
-
-
 	}
 
 	@Override
@@ -39,7 +40,7 @@ public class ItemTerra extends Item
 
 	@Override
 	@SideOnly(Side.CLIENT)
-	public void getSubItems(Item itemIn, CreativeTabs tab, List subItems)
+	public void getSubItems(Item itemIn, CreativeTabs tab, NonNullList<ItemStack> subItems)
 	{
 		if(showInCreative)
 		{
@@ -58,7 +59,7 @@ public class ItemTerra extends Item
 		showInCreative = b;
 	}
 
-	@Override
+	/*@Override
 	public String getUnlocalizedName(ItemStack stack)
 	{
 		if(!this.hasSubtypes)
@@ -67,5 +68,5 @@ public class ItemTerra extends Item
 		{
 			return super.getUnlocalizedName(stack) + "." + subTypeNames[stack.getItemDamage()];
 		}
-	}
+	}*/
 }

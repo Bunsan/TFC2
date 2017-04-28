@@ -28,21 +28,43 @@ global.schist=Schist
 global.gneiss=Gneiss
 global.marble=Marble
 
+global.acacia=Acacia
 global.ash=Ash
 global.aspen=Aspen
 global.birch=Birch
+global.blackwood=Blackwood
 global.chestnut=Chestnut
 global.douglas_fir=Douglas Fir
 global.hickory=Hickory
+global.kapok=Kapok
 global.maple=Maple
 global.oak=Oak
 global.pine=Pine
+global.palm=Palm
+global.rosewood=Rosewood
 global.sequoia=Sequoia
 global.spruce=Spruce
 global.sycamore=Sycamore
 global.white_cedar=White Cedar
 global.white_elm=White Elm
 global.willow=Willow
+
+global.clay=Clay
+global.ceramic=Ceramic
+
+gui.generatingmapmessage=Generating Island Map Please Wait...
+
+#== Creative Tabs ==
+itemGroup.TFCArmor=(TFC) Armor
+itemGroup.TFCMaterials=(TFC) Materials
+itemGroup.TFCMisc=(TFC) Misc
+itemGroup.TFCPottery=(TFC) Pottery
+itemGroup.TFCTools=(TFC) Tools
+itemGroup.TFCWeapons=(TFC) Weapons
+itemGroup.TFCDevices=(TFC) Devices
+itemGroup.TFCFoods=(TFC) Foodstuffs
+itemGroup.TFCBuilding=(TFC) Building Blocks
+itemGroup.TFCDecoration=(TFC) Decoration Blocks
 
 #==================
 #= Terrain Blocks =
@@ -53,17 +75,341 @@ tile.stone.name=Stone
 tile.rubble.name=Rubble
 tile.stonebrick.name=Stone Bricks
 tile.stonesmooth.name=Smoothed Stone
+tile.torch_on.name=Burning Torch
+tile.torch_off.name=Burnt out Torch
+tile.thatch.name=Thatch
 
 #=================
 #= Wooden Blocks =
 #=================
 
+tile.sapling.name=Sapling
+tile.sapling2.name=Sapling
 tile.planks.name=Wood Planks
+tile.planks2.name=Wood Planks
+tile.log_vertical.name=Log
+tile.log_vertical2.name=Log
+tile.wood_support.name=Wooden Support
+tile.wood_support2.name=Wooden Support
+tile.wood_support3.name=Wooden Support
+item.plank.name=Plank 
+tile.stairs_acacia.name=Stairs
+tile.stairs_ash.name=Stairs
+tile.stairs_aspen.name=Stairs
+tile.stairs_birch.name=Stairs
+tile.stairs_chestnut.name=Stairs
+tile.stairs_douglasfir.name=Stairs
+tile.stairs_hickory.name=Stairs
+tile.stairs_maple.name=Stairs
+tile.stairs_oak.name=Stairs
+tile.stairs_pine.name=Stairs
+tile.stairs_sequoia.name=Stairs
+tile.stairs_spruce.name=Stairs
+tile.stairs_sycamore.name=Stairs
+tile.stairs_whitecedar.name=Stairs
+tile.stairs_willow.name=Stairs
+tile.stairs_kapok.name=Stairs
+tile.stairs_rosewood.name=Stairs
+tile.stairs_blackwood.name=Stairs
+tile.stairs_palm.name=Stairs
+
 
 #=========
-#= Seeds =
+#= GUI =
 #=========
-item.seeds.seeds_corn=Seeds Corn
-item.seeds.seeds_cabbage=Seeds Cabbage
+gui.food.fruit=Fruit
+gui.food.vegetable=Vegetable
+gui.food.grain=Grain
+gui.food.protein=Protein
+gui.food.dairy=Dairy
+gui.skillpage=Skills
+gui.healthpage=Health
+gui.skill.novice=Novice
+gui.skill.adept=Adept
+gui.skill.expert=Expert
+gui.skill.master=Master
+gui.skill.woodworker=Woodworker
+gui.skill.smith=Smith
+gui.skill.toolsmith=Toolsmith
+gui.skill.weaponsmith=Weaponsmith
+gui.skill.armorsmith=Armorsmith
+gui.skill.farmer=Farmer
+gui.skill.fisherman=Fisherman
+gui.skill.butcher=Butcher
 
+#=================
+#======Items======
+#=================
 item.looserock.name=Rock
+item.stone_axe.name=Stone Axe
+item.stone_shovel.name=Stone Shovel
+item.stone_knife.name=Stone Knife
+item.stone_hoe.name=Stone Hoe
+item.stone_hammer.name=Stone Hammer
+item.firestarter.name=Firestarter
+item.straw.name=Straw
+item.jug.name=Jug
+item.pot.name=Pot
+item.vessel.name=Vessel
+item.bowl.name=Bowl
+item.mold.name=Mold
+item.fire_brick.name=Fire Brick
+
+#===========
+#   MOLDS
+#===========
+clay_mold_axe=Clay Axe Mold
+ceramic_mold_axe=Axe Mold
+ceramic_mold_axe_copper=Axe Mold (Copper)
+ceramic_mold_axe_bronze=Axe Mold (Bronze)
+ceramic_mold_axe_bismuth_bronze=Axe Mold (Black Bronze)
+ceramic_mold_axe_black_bronze=Axe Mold (Bismuth Bronze)
+
+clay_mold_chisel=Clay Chisel Mold
+ceramic_mold_chisel=Chisel Mold
+ceramic_mold_chisel_copper=Chisel Mold (Copper)
+ceramic_mold_chisel_bronze=Chisel Mold (Bronze)
+ceramic_mold_chisel_bismuth_bronze=Chisel Mold (Black Bronze)
+ceramic_mold_chisel_black_bronze=Chisel Mold (Bismuth Bronze)
+
+clay_mold_hammer=Clay Hammer Mold
+ceramic_mold_hammer=Hammer Mold
+ceramic_mold_hammer_copper=Hammer Mold (Copper)
+ceramic_mold_hammer_bronze=Hammer Mold (Bronze)
+ceramic_mold_hammer_bismuth_bronze=Hammer Mold (Black Bronze)
+ceramic_mold_hammer_black_bronze=Hammer Mold (Bismuth Bronze)
+
+clay_mold_hoe=Clay Hoe Mold
+ceramic_mold_hoe=Hoe Mold
+ceramic_mold_hoe_copper=Hoe Mold (Copper)
+ceramic_mold_hoe_bronze=Hoe Mold (Bronze)
+ceramic_mold_hoe_bismuth_bronze=Hoe Mold (Black Bronze)
+ceramic_mold_hoe_black_bronze=Hoe Mold (Bismuth Bronze)
+
+clay_mold_knife=Clay Knife Mold
+ceramic_mold_knife=Knife Mold
+ceramic_mold_knife_copper=Knife Mold (Copper)
+ceramic_mold_knife_bronze=Knife Mold (Bronze)
+ceramic_mold_knife_bismuth_bronze=Knife Mold (Black Bronze)
+ceramic_mold_knife_black_bronze=Knife Mold (Bismuth Bronze)
+
+clay_mold_mace=Clay Mace Mold
+ceramic_mold_mace=Mace Mold
+ceramic_mold_mace_copper=Mace Mold (Copper)
+ceramic_mold_mace_bronze=Mace Mold (Bronze)
+ceramic_mold_mace_bismuth_bronze=Mace Mold (Black Bronze)
+ceramic_mold_mace_black_bronze=Mace Mold (Bismuth Bronze)
+
+clay_mold_pick=Clay Pick Mold
+ceramic_mold_pick=Pick Mold
+ceramic_mold_pick_copper=Pick Mold (Copper)
+ceramic_mold_pick_bronze=Pick Mold (Bronze)
+ceramic_mold_pick_bismuth_bronze=Pick Mold (Black Bronze)
+ceramic_mold_pick_black_bronze=Pick Mold (Bismuth Bronze)
+
+clay_mold_propick=Clay ProPick Mold
+ceramic_mold_propick=ProPick Mold
+ceramic_mold_propick_copper=ProPick Mold (Copper)
+ceramic_mold_propick_bronze=ProPick Mold (Bronze)
+ceramic_mold_propick_bismuth_bronze=ProPick Mold (Black Bronze)
+ceramic_mold_propick_black_bronze=ProPick Mold (Bismuth Bronze)
+
+clay_mold_saw=Clay Saw Mold
+ceramic_mold_saw=Saw Mold
+ceramic_mold_saw_copper=Saw Mold (Copper)
+ceramic_mold_saw_bronze=Saw Mold (Bronze)
+ceramic_mold_saw_bismuth_bronze=Saw Mold (Black Bronze)
+ceramic_mold_saw_black_bronze=Saw Mold (Bismuth Bronze)
+
+clay_mold_scythe=Clay Scythe Mold
+ceramic_mold_scythe=Scythe Mold
+ceramic_mold_scythe_copper=Scythe Mold (Copper)
+ceramic_mold_scythe_bronze=Scythe Mold (Bronze)
+ceramic_mold_scythe_bismuth_bronze=Scythe Mold (Black Bronze)
+ceramic_mold_scythe_black_bronze=Scythe Mold (Bismuth Bronze)
+
+clay_mold_shovel=Clay Shovel Mold
+ceramic_mold_shovel=Shovel Mold
+ceramic_mold_shovel_copper=Shovel Mold (Copper)
+ceramic_mold_shovel_bronze=Shovel Mold (Bronze)
+ceramic_mold_shovel_bismuth_bronze=Shovel Mold (Black Bronze)
+ceramic_mold_shovel_black_bronze=Shovel Mold (Bismuth Bronze)
+
+clay_mold_sword=Clay Sword Mold
+ceramic_mold_sword=Sword Mold
+ceramic_mold_sword_copper=Sword Mold (Copper)
+ceramic_mold_sword_bronze=Sword Mold (Bronze)
+ceramic_mold_sword_bismuth_bronze=Sword Mold (Black Bronze)
+ceramic_mold_sword_black_bronze=Sword Mold (Bismuth Bronze)
+
+clay_mold_javelin=Clay Javelin Head Mold
+ceramic_mold_javelin=Javelin Head Mold
+ceramic_mold_javelin_copper=Javelin Head Mold (Copper)
+ceramic_mold_javelin_bronze=Javelin Head Mold (Bronze)
+ceramic_mold_javelin_bismuth_bronze=Javelin Head Mold (Black Bronze)
+ceramic_mold_javelin_black_bronze=Javelin Head Mold (Bismuth Bronze)
+
+#=================
+#  Tool Heads
+#=================
+item.tool_head.name=Tool Head
+
+stone_axe_head=Stone Axe Head
+stone_shovel_head=Stone Shovel Head
+stone_knife_blade=Stone Knife Head
+stone_hoe_head=Stone Hoe Head
+stone_hammer_head=Stone Hammer Head
+stone_javelin_head=Stone Javelin Head
+
+copper_axe_head=Copper Axe Head
+copper_shovel_head=Copper Shovel Head
+copper_knife_blade=Copper knife Blade
+copper_hoe_head=Copper Hoe Head
+copper_hammer_head=Copper Hammer Head
+copper_chisel_head=Copper Chisel Head
+copper_javelin_head=Copper Javelin Head
+copper_mace_head=Copper Mace Head
+copper_pick_head=Copper Pick Head
+copper_propick_head=Copper Prospector's Pick Head
+copper_saw_blade=Copper Saw Blade
+copper_scythe_blade=Copper Scythe Blade
+copper_sword_blade=Copper Sward Blade
+
+bronze_axe_head=Bronze Axe Head
+bronze_shovel_head=Bronze Shovel Head
+bronze_knife_blade=Bronze Knife Blade
+bronze_hoe_head=Bronze Hoe Head
+bronze_hammer_head=Bronze Hammer Head
+bronze_chisel_head=Bronze Chisel Head
+bronze_javelin_head=Bronze Javelin Head
+bronze_mace_head=Bronze Mace Head
+bronze_pick_head=Bronze Pick Head
+bronze_propick_head=Bronze Prospector's Pick Head
+bronze_saw_blade=Bronze Saw Blade
+bronze_scythe_blade=Bronze Scythe Blade
+bronze_sword_blade=Bronze Sword Blade
+
+bismuth_bronze_axe_head=Bismuth Bronze Axe Head
+bismuth_bronze_shovel_head=Bismuth Bronze Shovel Head
+bismuth_bronze_knife_blade=Bismuth Bronze Knife Blade
+bismuth_bronze_hoe_head=Bismuth Bronze Hoe Head
+bismuth_bronze_hammer_head=Bismuth Bronze Hammer Head
+bismuth_bronze_chisel_head=Bismuth Bronze Chisel Head
+bismuth_bronze_javelin_head=Bismuth Bronze Javelin Head
+bismuth_bronze_mace_head=Bismuth Bronze Mace Head
+bismuth_bronze_pick_head=Bismuth Bronze Pick Head
+bismuth_bronze_propick_head=Bismuth Bronze Prospector's Pick Head
+bismuth_bronze_saw_blade=Bismuth Bronze Saw Blade
+bismuth_bronze_scythe_blade=Bismuth Bronze Scythe Blade
+bismuth_bronze_sword_blade=Bismuth Bronze Sword Blade
+
+black_bronze_axe_head=Black Bronze Axe Head
+black_bronze_shovel_head=Black Bronze Shovel Head
+black_bronze_knife_blade=Black Bronze Knife Blade
+black_bronze_hoe_head=Black Bronze Hoe Head
+black_bronze_hammer_head=Black Bronze Hammer Head
+black_bronze_chisel_head=Black Bronze Chisel Head
+black_bronze_javelin_head=Black Bronze Javelin Head
+black_bronze_mace_head=Black Bronze Mace Head
+black_bronze_pick_head=Black Bronze Pick Head
+black_bronze_propick_head=Black Bronze Prospector's Pick Head
+black_bronze_saw_blade=Black Bronze Saw Blade
+black_bronze_scythe_blade=Black Bronze Scythe Blade
+black_bronze_sword_blade=Black Bronze Sword Blade
+
+wrought_iron_axe_head=Wrought Iron Axe Head
+wrought_iron_shovel_head=Wrought Iron Shovel Head
+wrought_iron_knife_blade=Wrought Iron Knife Blade
+wrought_iron_hoe_head=Wrought Iron Hoe Head
+wrought_iron_hammer_head=Wrought Iron Hammer Head
+wrought_iron_chisel_head=Wrought Iron Chisel Head
+wrought_iron_javelin_head=Wrought Iron Javelin Head
+wrought_iron_mace_head=Wrought Iron Mace Head
+wrought_iron_pick_head=Wrought Iron Pick Head
+wrought_iron_propick_head=Wrought Iron Prospector's Pick Head
+wrought_iron_saw_blade=Wrought Iron Saw Blade
+wrought_iron_scythe_blade=Wrought Iron Scythe Blade
+wrought_iron_sword_blade=Wrought Iron Sword Blade
+
+steel_axe_head=Steel Axe Head
+steel_shovel_head=Steel Shovel Head
+steel_knife_blade=Steel Knife Blade
+steel_hoe_head=Steel Hoe Head
+steel_hammer_head=Steel Hammer Head
+steel_chisel_head=Steel Chisel Head
+steel_javelin_head=Steel Javelin Head
+steel_mace_head=Steel Mace Head
+steel_pick_head=Steel Pick Head
+steel_propick_head=Steel Prospector's Pick Head
+steel_saw_blade=Steel Saw Blade
+steel_scythe_blade=Steel Scythe Blade
+steel_sword_blade=Steel Sword Blade
+
+black_steel_axe_head=Black Steel Axe Head
+black_steel_shovel_head=Black Steel Shovel Head
+black_steel_knife_blade=Black Steel Knife Blade
+black_steel_hoe_head=Black Steel Hoe Head
+black_steel_hammer_head=Black Steel Hammer Head
+black_steel_chisel_head=Black Steel Chisel Head
+black_steel_javelin_head=Black Steel Javelin Head
+black_steel_mace_head=Black Steel Mace Head
+black_steel_pick_head=Black Steel Pick Head
+black_steel_propick_head=Black Steel Prospector's Pick Head
+black_steel_saw_blade=Black Steel Saw Blade
+black_steel_scythe_blade=Black Steel Scythe Blade
+black_steel_sword_blade=Black Steel Sword Blade
+
+blue_steel_axe_head=Blue Steel Axe Head
+blue_steel_shovel_head=Blue Steel Shovel Head
+blue_steel_knife_blade=Blue Steel Knife Blade
+blue_steel_hoe_head=Blue Steel Hoe Head
+blue_steel_hammer_head=Blue Steel Hammer Head
+blue_steel_chisel_head=Blue Steel Chisel Head
+blue_steel_javelin_head=Blue Steel Javelin Head
+blue_steel_mace_head=Blue Steel Mace Head
+blue_steel_pick_head=Blue Steel Pick Head
+blue_steel_propick_head=Blue Steel Prospector's Pick Head
+blue_steel_saw_blade=Blue Steel Saw Blade
+blue_steel_scythe_blade=Blue Steel Scythe Blade
+blue_steel_sword_blade=Blue Steel Sword Blade
+
+red_steel_axe_head=Red Steel Axe Head
+red_steel_shovel_head=Red Steel Shovel Head
+red_steel_knife_blade=Red Steel Knife Blade
+red_steel_hoe_head=Red Steel Hoe Head
+red_steel_hammer_head=Red Steel Hammer Head
+red_steel_chisel_head=Red Steel Chisel Head
+red_steel_javelin_head=Red Steel Javelin Head
+red_steel_mace_head=Red Steel Mace Head
+red_steel_pick_head=Red Steel Pick Head
+red_steel_propick_head=Red Steel Prospector's Pick Head
+red_steel_saw_blade=Red Steel Saw Blade
+red_steel_scythe_blade=Red Steel Scythe Blade
+red_steel_sword_blade=Red Steel Sword Blade
+
+#=================
+#= Entity ========
+#=================
+entity.Cart.name=Cart
+entity.Bear.name=Bear
+entity.BearPanda.name=Panda Bear
+entity.Lion.name=Lion
+entity.Tiger.name=Tiger
+entity.Rhino.name=Rhino
+entity.Elephant.name=Elephant
+entity.Mammoth.name=Mammoth
+entity.Boar.name=Boar
+entity.Bison.name=Bison
+entity.FoxRed.name=Red Fox
+entity.FoxArctic.name=Arctic Fox
+entity.FoxDesert.name=Desert Fox
+entity.Hippo.name=Hippo
+entity.BigCat.name=Big Cat
+entity.Sabertooth.name=Sabertooth
+entity.Elk.name=Elk
+
+#=================
+#= Fluid =========
+#=================
+fluid.saltwater=Saltwater
+fluid.freshwater=Fresh Water

@@ -12,7 +12,6 @@ import net.minecraft.block.properties.PropertyEnum;
 import net.minecraft.block.properties.PropertyHelper;
 import net.minecraft.block.state.BlockStateContainer;
 import net.minecraft.block.state.IBlockState;
-import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.util.BlockRenderLayer;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
@@ -32,22 +31,20 @@ import com.bioxx.tfc2.api.trees.TreeRegistry;
 import com.bioxx.tfc2.api.trees.TreeSchemManager;
 import com.bioxx.tfc2.api.trees.TreeSchematic;
 import com.bioxx.tfc2.api.types.WoodType;
+import com.bioxx.tfc2.core.TFCTabs;
 
 public class BlockSapling extends BlockTerra implements IGrowable, IPlantable
 {
 	public static final PropertyEnum META_PROPERTY = PropertyEnum.create("type", WoodType.class, Arrays.copyOfRange(WoodType.values(), 0, 16));
 	public BlockSapling()
 	{
-		super(Material.PLANTS, META_PROPERTY);
-		this.setCreativeTab(CreativeTabs.DECORATIONS);
-		setSoundType(SoundType.GROUND);
-		this.setTickRandomly(true);
+		this(META_PROPERTY);
 	}
 
 	protected BlockSapling(PropertyHelper ph)
 	{
 		super(Material.PLANTS, ph);
-		this.setCreativeTab(CreativeTabs.DECORATIONS);
+		this.setCreativeTab(TFCTabs.TFCDecoration);
 		setSoundType(SoundType.GROUND);
 		this.setTickRandomly(true);
 	}
@@ -109,9 +106,14 @@ public class BlockSapling extends BlockTerra implements IGrowable, IPlantable
 	}
 
 	@Override
-	public void grow(World world, Random rand, BlockPos pos, IBlockState state) 
+	public void grow(World world, Random rand, BlockPos pos, IBlockState state)
 	{
 		WoodType wood = (WoodType)state.getValue(META_PROPERTY);
+		this.grow_do(world, rand, pos, state, wood);
+	}
+
+	protected void grow_do(World world, Random rand, BlockPos pos, IBlockState state, WoodType wood)
+	{
 		TreeSchemManager tsm = TreeRegistry.instance.managerFromString(wood.getName());
 		TreeConfig tc = TreeRegistry.instance.treeFromString(wood.getName());
 

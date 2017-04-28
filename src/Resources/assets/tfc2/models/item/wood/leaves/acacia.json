@@ -1,0 +1,5 @@
+{
+    "parent": "tfc2:block/leaves/leaves",
+    "textures": {"all": "tfc2:blocks/wood/trees/acacia leaves"}
+    }
+}

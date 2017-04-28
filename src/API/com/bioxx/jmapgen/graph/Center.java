@@ -268,6 +268,16 @@ public class Center
 		return out;
 	}
 
+	public Vector<Center> getOnlyLowerCenters()
+	{
+		Vector<Center> out = new Vector<Center>();
+		for(Center c : neighbors)
+			if(c.getElevation() < getElevation())
+				out.add(c);
+
+		return out;
+	}
+
 	public Corner getClosestCorner(Point p)
 	{
 		Corner closest = corners.get(0);
@@ -440,7 +450,9 @@ public class Center
 		SmallCrater(8), 
 		Pond(9), 
 		Spire(10),
-		Volcano(11);
+		Volcano(11),
+		Mesa(12),
+		Clearing(13);
 
 		long flag;
 		Marker(int f)

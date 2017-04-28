@@ -82,7 +82,7 @@ public class ContainerAnvil extends ContainerTFC
 	@Override
 	public ItemStack transferStackInSlotTFC(EntityPlayer player, int slotNum)
 	{
-		ItemStack origStack = null;
+		ItemStack origStack = ItemStack.EMPTY;
 		Slot slot = (Slot)this.inventorySlots.get(slotNum);
 
 		if (slot != null && slot.getHasStack())
@@ -94,28 +94,28 @@ public class ContainerAnvil extends ContainerTFC
 			if (slotNum >= 9 && slotNum < 27)
 			{
 				if (!this.mergeItemStack(slotStack, 27, inventorySlots.size(), true))
-					return null;
+					return ItemStack.EMPTY;
 			}
 			else if (slotNum < 9)
 			{
 				if (!this.mergeItemStack(slotStack, 9, 27, true))
-					return null;
+					return ItemStack.EMPTY;
 			}
 			else
 			{
 				if (!this.mergeItemStack(slotStack, 9, 27, false))
-					return null;
+					return ItemStack.EMPTY;
 			}
 
-			if (slotStack.stackSize <= 0)
-				slot.putStack(null);
+			if (slotStack.getMaxStackSize() <= 0)
+				slot.putStack(ItemStack.EMPTY);
 			else
 				slot.onSlotChanged();
 
-			if (slotStack.stackSize == origStack.stackSize)
-				return null;
+			if (slotStack.getMaxStackSize() == origStack.getMaxStackSize())
+				return ItemStack.EMPTY;
 
-			slot.onPickupFromSlot(player, slotStack);
+			slot.onTake(player, slotStack);
 		}
 
 		return origStack;

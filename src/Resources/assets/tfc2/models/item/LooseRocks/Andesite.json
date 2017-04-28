@@ -1,6 +1,0 @@
-{
-    "parent": "tfc2:item/DefaultItem",
-    "textures": {
-        "layer0": "tfc2:items/rocks/Andesite Rock"
-    }
-}

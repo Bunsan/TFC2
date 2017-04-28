@@ -13,7 +13,7 @@ import net.minecraft.world.WorldServer;
 public class RemoveAreaCommand extends CommandBase
 {
 	@Override
-	public String getCommandName()
+	public String getName()
 	{
 		return "removearea";
 	}
@@ -27,6 +27,8 @@ public class RemoveAreaCommand extends CommandBase
 		} catch (PlayerNotFoundException ignored) {
 		}
 		if(player == null)
+			return;
+		if(!player.isCreative())
 			return;
 
 		WorldServer world = server.worldServerForDimension(player.getEntityWorld().provider.getDimension());
@@ -75,7 +77,7 @@ public class RemoveAreaCommand extends CommandBase
 	}
 
 	@Override
-	public String getCommandUsage(ICommandSender icommandsender) 
+	public String getUsage(ICommandSender icommandsender) 
 	{
 		return "";
 	}

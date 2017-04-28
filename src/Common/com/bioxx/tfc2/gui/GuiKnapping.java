@@ -1,12 +1,10 @@
 package com.bioxx.tfc2.gui;
 
-import java.awt.Toolkit;
-import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.StringSelection;
 import java.util.List;
 
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.entity.player.InventoryPlayer;
+import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.World;
@@ -14,13 +12,14 @@ import net.minecraft.world.World;
 import net.minecraftforge.client.event.GuiScreenEvent.ActionPerformedEvent;
 import net.minecraftforge.common.MinecraftForge;
 
+import com.bioxx.tfc2.Core;
 import com.bioxx.tfc2.Reference;
 import com.bioxx.tfc2.TFC;
+import com.bioxx.tfc2.TFCItems;
 import com.bioxx.tfc2.api.crafting.CraftingManagerTFC;
 import com.bioxx.tfc2.api.crafting.CraftingManagerTFC.RecipeType;
 import com.bioxx.tfc2.api.interfaces.IRecipeTFC;
 import com.bioxx.tfc2.containers.ContainerSpecialCrafting;
-import com.bioxx.tfc2.core.PlayerInfo;
 import com.bioxx.tfc2.core.PlayerManagerTFC;
 import com.bioxx.tfc2.networking.server.SKnappingPacket;
 
@@ -80,6 +79,8 @@ public class GuiKnapping extends GuiContainerTFC
 		}
 
 		List<IRecipeTFC> recipes = CraftingManagerTFC.getInstance().getRecipeList(RecipeType.KNAPPING);
+		if(PlayerManagerTFC.getInstance().getClientPlayer().specialCraftingType.getItem() == Items.CLAY_BALL)
+			recipes = CraftingManagerTFC.getInstance().getRecipeList(RecipeType.POTTERY);
 		int x = 0, y = 0;
 		for (int i = 0; i < recipes.size(); i++)
 		{
@@ -99,7 +100,7 @@ public class GuiKnapping extends GuiContainerTFC
 			resetButton(guibutton.id);
 			TFC.network.sendToServer(new SKnappingPacket(guibutton.id));
 
-			if(PlayerManagerTFC.getInstance().getClientPlayer().isInDebug)
+			/*if(PlayerManagerTFC.getInstance().getClientPlayer().isInDebug)
 			{
 				PlayerInfo pi = PlayerManagerTFC.getInstance().getClientPlayer();
 				StringBuilder out = new StringBuilder("");
@@ -117,8 +118,9 @@ public class GuiKnapping extends GuiContainerTFC
 						.append("\"").append(temp[8]).append("\"");
 				StringSelection selection = new StringSelection(out.toString());
 				Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-				clipboard.setContents(selection, selection);
-			}
+				if(clipboard != null)
+					clipboard.setContents(selection, selection);
+			}*/
 
 		}
 		else
@@ -135,13 +137,23 @@ public class GuiKnapping extends GuiContainerTFC
 			((GuiKnappingButton) this.buttonList.get(i)).highlight(true);
 		}
 		List<IRecipeTFC> recipes = CraftingManagerTFC.getInstance().getRecipeList(RecipeType.KNAPPING);
+		if(PlayerManagerTFC.getInstance().getClientPlayer().specialCraftingType.getItem() == Items.CLAY_BALL)
+			recipes = CraftingManagerTFC.getInstance().getRecipeList(RecipeType.POTTERY);
 		IRecipeTFC rec = recipes.get(id - 81);
 		for(int i = 0; i < rec.getRecipeSize(); i++)
 		{
 			int x = i % rec.getRecipeWidth();
 			int y = i / rec.getRecipeWidth();
-			if(rec.getRecipeItems().get(x+y*rec.getRecipeWidth()) != null)
-				((GuiKnappingButton) this.buttonList.get(x+y*9)).highlight(false);
+			if(PlayerManagerTFC.getInstance().getClientPlayer().specialCraftingType.getItem() == TFCItems.LooseRock)
+			{
+				if(rec.getRecipeItems().get(x+y*rec.getRecipeWidth()) != ItemStack.EMPTY)
+					((GuiKnappingButton) this.buttonList.get(x+y*9)).highlight(false);
+			}
+			else
+			{
+				if(((ItemStack)(rec.getRecipeItems().get(x+y*rec.getRecipeWidth()))) == ItemStack.EMPTY)
+					((GuiKnappingButton) this.buttonList.get(x+y*9)).highlight(false);
+			}
 		}
 	}
 
@@ -153,19 +165,21 @@ public class GuiKnapping extends GuiContainerTFC
 		}
 		PlayerManagerTFC.getInstance().getClientPlayer().knappingInterface[id] = true;
 		((GuiKnappingButton) this.buttonList.get(id)).enabled = false;
-		((ContainerSpecialCrafting) this.inventorySlots).craftMatrix.setInventorySlotContents(id, null);
+		((ContainerSpecialCrafting) this.inventorySlots).craftMatrix.removeStackFromSlot(id);
 	}
 
 	@Override
-	protected void drawGuiContainerBackgroundLayer(float f, int p, int j)
+	protected void drawGuiContainerBackgroundLayer(float ticks, int mouseX, int mouseY)
 	{
 		drawGui(texture);
+		Core.bindTexture(texture);
+		this.drawTexturedModalRect(this.guiLeft+175, this.guiTop, 176, 0, 80, 190);
 	}
 
 	@Override
-	protected void drawForeground(int guiLeft, int guiTop)
+	protected void drawGuiContainerForegroundLayer(int mouseX, int mouseY)
 	{
-		this.drawTexturedModalRect(this.guiLeft+175, this.guiTop, 176, 0, 80, 190);
+
 	}
 
 	/**
@@ -175,7 +189,7 @@ public class GuiKnapping extends GuiContainerTFC
 	@Override
 	protected boolean checkHotbarKeys(int par1)
 	{
-		if (this.mc.thePlayer.inventory.currentItem != par1 - 2)
+		if (this.mc.player.inventory.currentItem != par1 - 2)
 		{
 			super.checkHotbarKeys(par1);
 			return true;
@@ -187,6 +201,13 @@ public class GuiKnapping extends GuiContainerTFC
 	@Override
 	protected void mouseClickMove(int mouseX, int mouseY, int clickedMouseButton, long timeSinceLastClick) 
 	{
+		// 1-st Check if the click falls inside the Knapping Grid boundaries. 
+		// (Doing so reduces the lag & allows for super methods to run when inventory slots are clicked.)
+		if (mouseY > 88+guiTop || mouseX > 88+guiLeft || mouseY < 16+guiTop || mouseX < 16+guiLeft)
+		{
+			super.mouseClickMove(mouseX, mouseY, clickedMouseButton, timeSinceLastClick);
+			return;
+		}
 		if (clickedMouseButton == 0)
 		{
 			for (int l = 0; l < this.buttonList.size(); ++l)
@@ -214,5 +235,7 @@ public class GuiKnapping extends GuiContainerTFC
 				}
 			}
 		}
+		else
+			super.mouseClickMove(mouseX, mouseY, clickedMouseButton, timeSinceLastClick);
 	}
 }

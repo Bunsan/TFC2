@@ -8,7 +8,8 @@ import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
 import net.minecraftforge.fml.common.network.simpleimpl.IMessageHandler;
 import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
 
-import com.bioxx.jmapgen.IslandMap;
+import com.bioxx.tfc2.api.util.Helper;
+import com.bioxx.tfc2.handlers.client.ClientRenderHandler;
 import com.bioxx.tfc2.world.WorldGen;
 
 public class CMapPacket implements IMessage
@@ -49,13 +50,21 @@ public class CMapPacket implements IMessage
 	{
 		@Override
 		public IMessage onMessage(final CMapPacket message, MessageContext ctx) {
-			IThreadListener mainThread = net.minecraft.client.Minecraft.getMinecraft(); //(WorldServer) ctx.getServerHandler().playerEntity.worldObj; // or Minecraft.getMinecraft() on the client
+			IThreadListener mainThread = net.minecraft.client.Minecraft.getMinecraft(); //(WorldServer) ctx.getServerHandler().playerentityIn.world; // or Minecraft.getMinecraft() on the client
 			mainThread.addScheduledTask(new Runnable() 
 			{
 				@Override
 				public void run() 
 				{
-					IslandMap map = WorldGen.getInstance().createFakeMap(message.islandX, message.islandZ, message.seed, true);
+					if(WorldGen.getInstance().worldSeed == Long.MIN_VALUE)
+					{
+						WorldGen.getInstance().worldSeed = message.seed - Helper.combineCoords(message.islandX, message.islandZ);
+						ClientRenderHandler.IsGeneratingFirstIsland = true;
+
+					}
+					//WorldGen.getInstance().createIsland(message.islandX, message.islandZ, message.seed, true);
+					WorldGen.getInstance().forceBuildIsland(message.islandX, message.islandZ, message.seed);
+
 				}
 			});
 			return null; // no response in this case

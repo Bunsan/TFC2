@@ -3,26 +3,20 @@ package com.bioxx.tfc2;
 import java.util.ArrayList;
 
 import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
+import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemBlock;
+import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 
 import net.minecraftforge.fml.common.registry.GameRegistry;
+import net.minecraftforge.oredict.OreDictionary;
 
-import com.bioxx.tfc2.api.TFCFluids;
 import com.bioxx.tfc2.api.types.WoodType;
 import com.bioxx.tfc2.blocks.*;
-import com.bioxx.tfc2.blocks.liquids.BlockFreshWater;
-import com.bioxx.tfc2.blocks.liquids.BlockFreshWaterStatic;
-import com.bioxx.tfc2.blocks.liquids.BlockSaltWater;
-import com.bioxx.tfc2.blocks.liquids.BlockSaltWaterStatic;
 import com.bioxx.tfc2.blocks.terrain.*;
 import com.bioxx.tfc2.blocks.vanilla.BlockTorchTFC;
 import com.bioxx.tfc2.items.itemblocks.*;
-import com.bioxx.tfc2.tileentities.TileAnvil;
-import com.bioxx.tfc2.tileentities.TileCrop;
-import com.bioxx.tfc2.tileentities.TileFarmland;
-import com.bioxx.tfc2.tileentities.TileTorch;
+import com.bioxx.tfc2.tileentities.*;
 
 public class TFCBlocks
 {
@@ -37,11 +31,8 @@ public class TFCBlocks
 	public static Block Planks2;
 	public static Block Effect;
 	public static Block Vegetation;
+	public static Block VegDesert;
 	public static Block LooseRocks;
-	public static Block FreshWater;
-	public static Block SaltWater;
-	public static Block FreshWaterStatic;
-	public static Block SaltWaterStatic;
 	public static Block Sapling;
 	public static Block Sapling2;
 	public static Block LogNatural;
@@ -62,7 +53,7 @@ public class TFCBlocks
 	public static Block PortalStone;
 	public static Block TorchOn;
 	public static Block TorchOff;
-	public static Block Crop;
+	//public static Block Crop;
 	public static Block Farmland;
 	public static Block SupportBeam;
 	public static Block SupportBeam2;
@@ -86,8 +77,13 @@ public class TFCBlocks
 	public static Block StairsRosewood;
 	public static Block StairsBlackwood;
 	public static Block StairsPalm;
-
 	public static Block Anvil;
+	public static Block StoneStalag;
+	public static Block StoneStalac;
+	public static Block Firepit;
+	public static Block Cactus;
+	public static Block Thatch;
+	public static Block PitKiln;
 
 	public static void LoadBlocks()
 	{
@@ -105,21 +101,18 @@ public class TFCBlocks
 		Planks2 = new BlockPlanks2().setHardness(4F).setUnlocalizedName("planks2");
 		Effect = new BlockEffect().setHardness(0.1F).setUnlocalizedName("effect");
 		Vegetation = new BlockVegetation().setHardness(0.1F).setUnlocalizedName("vegetation");
+		VegDesert = new BlockVegDesert().setHardness(0.1F).setUnlocalizedName("veg_desert");
 		LooseRocks = new BlockLooseRocks().setHardness(0.2F).setUnlocalizedName("loose_rock");
-		FreshWaterStatic = new BlockFreshWaterStatic(TFCFluids.FRESHWATER, Material.WATER).setUnlocalizedName("freshwater_static").setLightOpacity(3);
-		FreshWater = new BlockFreshWater(TFCFluids.FRESHWATER, Material.WATER).setUnlocalizedName("freshwater").setLightOpacity(3);
-		SaltWaterStatic = new BlockSaltWaterStatic(TFCFluids.SALTWATER, Material.WATER).setUnlocalizedName("saltwater_static").setLightOpacity(3);
-		SaltWater = new BlockSaltWater(TFCFluids.SALTWATER, Material.WATER).setUnlocalizedName("saltwater").setLightOpacity(3);
 		Sapling = new BlockSapling().setHardness(0.1F).setUnlocalizedName("sapling");
 		Sapling2 = new BlockSapling2().setHardness(0.1F).setUnlocalizedName("sapling2");
-		LogNatural = new BlockLogNatural().setHardness(6F).setUnlocalizedName("log_natural");
-		LogNatural2 = new BlockLogNatural2().setHardness(6F).setUnlocalizedName("log_natural2");
-		LogNaturalPalm = new BlockLogNaturalPalm().setHardness(6F).setUnlocalizedName("log_naturalpalm");
-		LogVertical = new BlockLogVertical().setHardness(2F).setUnlocalizedName("log_vertical");
-		LogVertical2 = new BlockLogVertical2().setHardness(2F).setUnlocalizedName("log_vertical2");
-		LogHorizontal = new BlockLogHorizontal().setHardness(2F).setUnlocalizedName("log_horizontal");
-		LogHorizontal2 = new BlockLogHorizontal2().setHardness(2F).setUnlocalizedName("log_horizontal2");
-		LogHorizontal3 = new BlockLogHorizontal3().setHardness(2F).setUnlocalizedName("log_horizontal3");
+		LogNatural = new BlockLogNatural().setHardness(20F).setUnlocalizedName("log_natural");
+		LogNatural2 = new BlockLogNatural2().setHardness(20F).setUnlocalizedName("log_natural2");
+		LogNaturalPalm = new BlockLogNaturalPalm().setHardness(12F).setUnlocalizedName("log_naturalpalm");
+		LogVertical = new BlockLogVertical().setHardness(6F).setUnlocalizedName("log_vertical");
+		LogVertical2 = new BlockLogVertical2().setHardness(6F).setUnlocalizedName("log_vertical2");
+		LogHorizontal = new BlockLogHorizontal().setHardness(6F).setUnlocalizedName("log_horizontal");
+		LogHorizontal2 = new BlockLogHorizontal2().setHardness(6F).setUnlocalizedName("log_horizontal2");
+		LogHorizontal3 = new BlockLogHorizontal3().setHardness(6F).setUnlocalizedName("log_horizontal3");
 		Leaves = new BlockLeaves().setHardness(0.1F).setUnlocalizedName("leaves");
 		Leaves2 = new BlockLeaves2().setHardness(0.1F).setUnlocalizedName("leaves2");
 		Ore = new BlockOre().setHardness(5F).setUnlocalizedName("ore");
@@ -130,7 +123,7 @@ public class TFCBlocks
 		PortalStone = new BlockPortalStone().setHardness(-1F).setResistance(6000000f).setUnlocalizedName("portalstone");
 		TorchOn = new BlockTorchTFC(true).setHardness(0.0F).setUnlocalizedName("torch_on");
 		TorchOff = new BlockTorchTFC(false).setHardness(0.0F).setUnlocalizedName("torch_off");
-		Crop = new BlockCrop().setRegistryName("crop").setHardness(0.1F).setUnlocalizedName("crop");
+		//Crop = new BlockCrop().setRegistryName("crop").setHardness(0.1F).setUnlocalizedName("crop");
 		Farmland = new BlockFarmland().setHardness(2F).setUnlocalizedName("farmland");
 		SupportBeam = new BlockWoodSupport().setHardness(2F).setUnlocalizedName("wood_support");
 		SupportBeam2 = new BlockWoodSupport2().setHardness(2F).setUnlocalizedName("wood_support2");
@@ -156,7 +149,13 @@ public class TFCBlocks
 		StairsBlackwood = new BlockStairsTFC(Planks2.getDefaultState().withProperty(BlockPlanks2.META_PROPERTY, WoodType.Blackwood)).setUnlocalizedName("stairs_blackwood");
 		StairsPalm = new BlockStairsTFC(Planks2.getDefaultState().withProperty(BlockPlanks2.META_PROPERTY, WoodType.Palm)).setUnlocalizedName("stairs_palm");
 
-		Anvil = new BlockAnvil().setHardness(4F).setUnlocalizedName("anvil");
+		Anvil = new BlockAnvil().setHardness(20F).setUnlocalizedName("anvil");
+		StoneStalag = new BlockStoneStalag().setHardness(5F).setUnlocalizedName("stoneStalag");
+		StoneStalac = new BlockStoneStalac().setHardness(5F).setUnlocalizedName("stoneStalac");
+		Firepit = new BlockFirepit().setHardness(4F).setUnlocalizedName("firepit");
+		Cactus = new BlockCactus().setHardness(4F).setUnlocalizedName("cactus");
+		Thatch = new BlockThatch().setHardness(4F).setUnlocalizedName("thatch");
+		PitKiln = new BlockPitKiln().setHardness(4F).setUnlocalizedName("pitkiln");
 	}
 
 	public static void RegisterBlocks()
@@ -176,11 +175,8 @@ public class TFCBlocks
 		register(Planks2, ItemWood.class);
 		register(Effect, ItemOre.class);
 		register(Vegetation);
+		register(VegDesert);
 		register(LooseRocks, ItemStone.class);
-		register(FreshWater, ItemBlock.class);
-		register(FreshWaterStatic, ItemBlock.class);
-		register(SaltWater, ItemBlock.class);
-		register(SaltWaterStatic, ItemBlock.class);
 		register(Sapling, ItemWood.class);
 		register(Sapling2, ItemWood.class);
 		register(LogNatural, ItemWood.class);
@@ -201,34 +197,46 @@ public class TFCBlocks
 		register(PortalStone);
 		register(TorchOn, ItemBlock.class);
 		register(TorchOff, ItemBlock.class);
-		register(Crop);
+		register(Cactus);
+		register(Thatch, ItemThatch.class);
 		register(Farmland);
 		register(SupportBeam, ItemWoodSupport.class);
 		register(SupportBeam2, ItemWoodSupport.class);
 		register(SupportBeam3, ItemWoodSupport.class);
 
 		register(Anvil, ItemBlock.class);
+		register(StoneStalag, ItemStone.class);
+		register(StoneStalac, ItemStone.class);
+		register(Firepit, ItemBlock.class);
+		register(PitKiln);
 
 		stairsList = new ArrayList<Block>();
-		stairsList.add(register(StairsAsh, ItemBlock.class));
-		stairsList.add(register(StairsAspen, ItemBlock.class));
-		stairsList.add(register(StairsBirch, ItemBlock.class));
-		stairsList.add(register(StairsChestnut, ItemBlock.class));
-		stairsList.add(register(StairsDouglasFir, ItemBlock.class));
-		stairsList.add(register(StairsHickory, ItemBlock.class));
-		stairsList.add(register(StairsMaple, ItemBlock.class));
-		stairsList.add(register(StairsOak, ItemBlock.class));
-		stairsList.add(register(StairsPine, ItemBlock.class));
-		stairsList.add(register(StairsSequoia, ItemBlock.class));
-		stairsList.add(register(StairsSpruce, ItemBlock.class));
-		stairsList.add(register(StairsSycamore, ItemBlock.class));
-		stairsList.add(register(StairsWhiteCedar, ItemBlock.class));
-		stairsList.add(register(StairsWillow, ItemBlock.class));
-		stairsList.add(register(StairsKapok, ItemBlock.class));
-		stairsList.add(register(StairsAcacia, ItemBlock.class));
-		stairsList.add(register(StairsRosewood, ItemBlock.class));
-		stairsList.add(register(StairsBlackwood, ItemBlock.class));
-		stairsList.add(register(StairsPalm, ItemBlock.class));
+		stairsList.add(register(StairsAsh, ItemStair.class));
+		stairsList.add(register(StairsAspen, ItemStair.class));
+		stairsList.add(register(StairsBirch, ItemStair.class));
+		stairsList.add(register(StairsChestnut, ItemStair.class));
+		stairsList.add(register(StairsDouglasFir, ItemStair.class));
+		stairsList.add(register(StairsHickory, ItemStair.class));
+		stairsList.add(register(StairsMaple, ItemStair.class));
+		stairsList.add(register(StairsOak, ItemStair.class));
+		stairsList.add(register(StairsPine, ItemStair.class));
+		stairsList.add(register(StairsSequoia, ItemStair.class));
+		stairsList.add(register(StairsSpruce, ItemStair.class));
+		stairsList.add(register(StairsSycamore, ItemStair.class));
+		stairsList.add(register(StairsWhiteCedar, ItemStair.class));
+		stairsList.add(register(StairsWillow, ItemStair.class));
+		stairsList.add(register(StairsKapok, ItemStair.class));
+		stairsList.add(register(StairsAcacia, ItemStair.class));
+		stairsList.add(register(StairsRosewood, ItemStair.class));
+		stairsList.add(register(StairsBlackwood, ItemStair.class));
+		stairsList.add(register(StairsPalm, ItemStair.class));
+
+		Stone.setHarvestLevel("pickaxe", 1);
+		StoneBrick.setHarvestLevel("pickaxe", 1);
+		StoneSmooth.setHarvestLevel("pickaxe", 1);
+		StoneStalag.setHarvestLevel("pickaxe", 1);
+		StoneStalac.setHarvestLevel("pickaxe", 1);
+		Ore.setHarvestLevel("pickaxe", 1);
 
 		LogNatural.setHarvestLevel("axe", 1);
 		LogNatural2.setHarvestLevel("axe", 1);
@@ -241,7 +249,51 @@ public class TFCBlocks
 		SupportBeam.setHarvestLevel("axe", 1);
 		SupportBeam2.setHarvestLevel("axe", 1);
 		SupportBeam3.setHarvestLevel("axe", 1);
+		Planks.setHarvestLevel("axe", 1);
+		Planks2.setHarvestLevel("axe", 1);
+		Thatch.setHarvestLevel("axe", 1);
 
+		Dirt.setHarvestLevel("shovel", 1);
+		Grass.setHarvestLevel("shovel", 1);
+		Gravel.setHarvestLevel("shovel", 1);
+		Sand.setHarvestLevel("shovel", 1);
+		Farmland.setHarvestLevel("shovel", 1);
+		PitKiln.setHarvestLevel("shovel", 1);
+
+
+		/*************************************
+		       Set Block Flammability
+		 *************************************/
+		for(Block b : stairsList)
+			Blocks.FIRE.setFireInfo(b, 5, 20);
+		Blocks.FIRE.setFireInfo(LogNatural, 5, 5);
+		Blocks.FIRE.setFireInfo(LogNatural2, 5, 5);
+		Blocks.FIRE.setFireInfo(LogNaturalPalm, 5, 5);
+		Blocks.FIRE.setFireInfo(LogVertical, 5, 5);
+		Blocks.FIRE.setFireInfo(LogVertical2, 5, 5);
+		Blocks.FIRE.setFireInfo(LogHorizontal, 5, 5);
+		Blocks.FIRE.setFireInfo(LogHorizontal2, 5, 5);
+		Blocks.FIRE.setFireInfo(LogHorizontal3, 5, 5);
+		Blocks.FIRE.setFireInfo(SupportBeam, 5, 20);
+		Blocks.FIRE.setFireInfo(SupportBeam2, 5, 20);
+		Blocks.FIRE.setFireInfo(SupportBeam3, 5, 20);
+		Blocks.FIRE.setFireInfo(Planks, 5, 20);
+		Blocks.FIRE.setFireInfo(Planks2, 5, 20);
+		Blocks.FIRE.setFireInfo(Thatch, 60, 20);
+		Blocks.FIRE.setFireInfo(Leaves, 30, 60);
+		Blocks.FIRE.setFireInfo(Leaves2, 30, 60);
+		Blocks.FIRE.setFireInfo(Sapling, 60, 100);
+		Blocks.FIRE.setFireInfo(Sapling2, 60, 100);
+
+	}
+
+	/**
+	 * This version of register should be used to add a block to the ore dictionary
+	 */
+	private static Block register(Block b, Class<? extends ItemBlock> i, String oreDictName)
+	{
+		OreDictionary.registerOre(oreDictName, new ItemStack(b, 1, Short.MAX_VALUE));
+		return register(b, i);
 	}
 
 	private static Block register(Block b, Class<? extends ItemBlock> i)
@@ -270,10 +322,60 @@ public class TFCBlocks
 		registerTileEntity(TileCrop.class, "crop");
 		registerTileEntity(TileFarmland.class, "farmland");
 		registerTileEntity(TileAnvil.class, "anvil");
+		registerTileEntity(TileFirepit.class, "firepit");
+		registerTileEntity(TilePitKiln.class, "pitkiln");
 	}
 
 	private static void registerTileEntity(Class<? extends TileEntity> c, String id)
 	{
 		GameRegistry.registerTileEntity(c, Reference.ModID+":"+id);
+	}
+
+	public static Block getStairsForWood(WoodType wood)
+	{
+		switch(wood)
+		{
+		case Acacia:
+			return TFCBlocks.StairsAcacia;
+		case Ash:
+			return TFCBlocks.StairsAsh;
+		case Aspen:
+			return TFCBlocks.StairsAspen;
+		case Birch:
+			return TFCBlocks.StairsBirch;
+		case Blackwood:
+			return TFCBlocks.StairsBlackwood;
+		case Chestnut:
+			return TFCBlocks.StairsChestnut;
+		case DouglasFir:
+			return TFCBlocks.StairsDouglasFir;
+		case Hickory:
+			return TFCBlocks.StairsHickory;
+		case Kapok:
+			return TFCBlocks.StairsKapok;
+		case Maple:
+			return TFCBlocks.StairsMaple;
+		case Oak:
+			return TFCBlocks.StairsOak;
+		case Palm:
+			return TFCBlocks.StairsPalm;
+		case Pine:
+			return TFCBlocks.StairsPine;
+		case Rosewood:
+			return TFCBlocks.StairsRosewood;
+		case Sequoia:
+			return TFCBlocks.StairsSequoia;
+		case Spruce:
+			return TFCBlocks.StairsSpruce;
+		case Sycamore:
+			return TFCBlocks.StairsSycamore;
+		case WhiteCedar:
+			return TFCBlocks.StairsWhiteCedar;
+		case Willow:
+			return TFCBlocks.StairsWillow;
+		default:
+			return TFCBlocks.StairsOak;
+
+		}
 	}
 }

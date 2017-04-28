@@ -1,0 +1,6 @@
+{
+    "parent": "tfc2:block/effects/base",
+    "textures": {
+        "top": "tfc2:blocks/effects/acid"
+    }
+}

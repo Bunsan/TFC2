@@ -13,6 +13,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
 import com.bioxx.jmapgen.RandomCollection;
+import com.bioxx.tfc2.Core;
 import com.bioxx.tfc2.api.interfaces.IGravityBlock;
 import com.bioxx.tfc2.entity.EntityFallingBlockTFC;
 
@@ -31,9 +32,9 @@ public class BlockGravity extends BlockTerra implements IGravityBlock
 	}
 
 	@Override
-	public void neighborChanged(IBlockState state, World world, BlockPos pos, Block blockIn)
+	public void neighborChanged(IBlockState state, World worldIn, BlockPos pos, Block blockIn, BlockPos fromPos)
 	{
-		world.scheduleUpdate(pos, this, tickRate(world));
+		((World)worldIn).scheduleUpdate(pos, this, tickRate((World)worldIn));
 	}
 
 	@Override
@@ -54,7 +55,7 @@ public class BlockGravity extends BlockTerra implements IGravityBlock
 		}
 		else if(slidePos != null && (slidePos.getY() >= 0))
 		{
-			worldIn.setBlockToAir(pos);
+			((World)worldIn).setBlockToAir(pos);
 			fall(worldIn, slidePos, state);
 		}
 	}
@@ -69,12 +70,12 @@ public class BlockGravity extends BlockTerra implements IGravityBlock
 			{
 				EntityFallingBlockTFC entityfallingblock = new EntityFallingBlockTFC(worldIn, pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D, state);
 				onStartFalling(entityfallingblock);
-				worldIn.spawnEntityInWorld(entityfallingblock);
+				worldIn.spawnEntity(entityfallingblock);
 			}
 		}
 		else
 		{
-			worldIn.setBlockToAir(pos);
+			((World)worldIn).setBlockToAir(pos);
 
 			BlockPos blockpos;
 			for (blockpos = pos.down(); (canFallInto(worldIn, blockpos)) && (blockpos.getY() > 0); blockpos = blockpos.down()) {}
@@ -133,18 +134,34 @@ public class BlockGravity extends BlockTerra implements IGravityBlock
 		if(world.rand.nextFloat() < 1 - getSlideChance())
 			return null;
 
+		if(!world.isAirBlock(pos.up()) || !world.getBlockState(pos.up()).getBlock().isReplaceable(world, pos.up()))
+			return null;
+
 		if(getSlideHeight() == -1)
 			return null;
 		else
 		{
 			RandomCollection<BlockPos> pot = new RandomCollection<BlockPos>();
-			if(!world.isSideSolid(pos.east(), EnumFacing.WEST) && depthScan(world, pos.east()) >= getSlideHeight())
+			int slideheightE = getSlideHeight();
+			int slideheightW = getSlideHeight();
+			int slideheightN = getSlideHeight();
+			int slideheightS = getSlideHeight();
+
+			boolean underWater = Core.isWater(world.getBlockState(pos.up()));
+
+			if(Core.isWater(world.getBlockState(pos.east()))) slideheightE = slideheightE * (underWater ? 3 : 2);
+			if(Core.isWater(world.getBlockState(pos.west()))) slideheightW  = slideheightW * (underWater ? 3 : 2);
+			if(Core.isWater(world.getBlockState(pos.north()))) slideheightN = slideheightN * (underWater ? 3 : 2);
+			if(Core.isWater(world.getBlockState(pos.south()))) slideheightS = slideheightS * (underWater ? 3 : 2);
+
+
+			if(!world.isSideSolid(pos.east(), EnumFacing.WEST) && depthScan(world, pos.east()) >= slideheightE)
 				pot.add(1.0, pos.east());
-			if(!world.isSideSolid(pos.west(), EnumFacing.EAST) && depthScan(world, pos.west()) >= getSlideHeight())
+			if(!world.isSideSolid(pos.west(), EnumFacing.EAST) && depthScan(world, pos.west()) >= slideheightW)
 				pot.add(1.0, pos.west());
-			if(!world.isSideSolid(pos.north(), EnumFacing.SOUTH) && depthScan(world, pos.north()) >= getSlideHeight())
+			if(!world.isSideSolid(pos.north(), EnumFacing.SOUTH) && depthScan(world, pos.north()) >= slideheightN)
 				pot.add(1.0, pos.north());
-			if(!world.isSideSolid(pos.south(), EnumFacing.NORTH) && depthScan(world, pos.south()) >= getSlideHeight())
+			if(!world.isSideSolid(pos.south(), EnumFacing.NORTH) && depthScan(world, pos.south()) >= slideheightS)
 				pot.add(1.0, pos.south());
 
 			if(pot.size() > 0)

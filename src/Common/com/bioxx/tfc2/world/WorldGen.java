@@ -16,12 +16,17 @@ import net.minecraft.world.World;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.relauncher.Side;
 
-import com.bioxx.jmapgen.*;
+import com.bioxx.jmapgen.IslandMap;
+import com.bioxx.jmapgen.IslandParameters;
 import com.bioxx.jmapgen.IslandParameters.Feature;
 import com.bioxx.jmapgen.IslandParameters.Feature.FeatureSig;
+import com.bioxx.jmapgen.RandomCollection;
+import com.bioxx.tfc2.Reference;
 import com.bioxx.tfc2.TFC;
-import com.bioxx.tfc2.api.*;
+import com.bioxx.tfc2.api.AnimalSpawnRegistry;
 import com.bioxx.tfc2.api.AnimalSpawnRegistry.SpawnGroup;
+import com.bioxx.tfc2.api.Global;
+import com.bioxx.tfc2.api.TFCOptions;
 import com.bioxx.tfc2.api.events.IslandGenEvent;
 import com.bioxx.tfc2.api.trees.TreeRegistry;
 import com.bioxx.tfc2.api.types.ClimateTemp;
@@ -29,6 +34,7 @@ import com.bioxx.tfc2.api.types.Moisture;
 import com.bioxx.tfc2.api.types.StoneType;
 import com.bioxx.tfc2.api.util.Helper;
 import com.bioxx.tfc2.api.util.IThreadCompleteListener;
+import com.bioxx.tfc2.handlers.client.ClientRenderHandler;
 import com.bioxx.tfc2.networking.server.SMapRequestPacket;
 
 
@@ -38,13 +44,18 @@ public class WorldGen implements IThreadCompleteListener
 	private static WorldGen instanceClient;
 	private static boolean SHOULD_RESET_SERVER = false;
 	private static boolean SHOULD_RESET_CLIENT = false;
+	private static IslandMap EMPTY_MAP = null;
 
 	final java.util.Map<Integer, CachedIsland> islandCache;
 	public World world;
+	public long worldSeed = Long.MIN_VALUE;
 	public static final int ISLAND_SIZE = 4096;
 
 	private Queue<Integer> mapQueue;
 	private ThreadBuild[] buildThreads;
+
+	//We keep this list so that we dont spam the server with map request packets from things like grass blocks.
+	private ArrayList<Integer> recentlyRequestedMaps = new ArrayList<Integer>();
 
 	public static WorldGen getInstance()
 	{
@@ -65,6 +76,12 @@ public class WorldGen implements IThreadCompleteListener
 		islandCache = Collections.synchronizedMap(new ConcurrentHashMap<Integer, CachedIsland>());
 		mapQueue = new PriorityBlockingQueue<Integer>();
 		buildThreads = new ThreadBuild[TFCOptions.maxThreadsForIslandGen];
+		EMPTY_MAP = new IslandMap(ISLAND_SIZE, 0);
+		IslandParameters ip = createParams(0, -2, 0);
+		ip.setIslandTemp(ClimateTemp.TEMPERATE);
+		ip.setIslandMoisture(Moisture.HIGH);
+		EMPTY_MAP.newIsland(ip);
+		EMPTY_MAP.generateFake();
 	}
 
 	public static void initialize(World world)
@@ -99,7 +116,8 @@ public class WorldGen implements IThreadCompleteListener
 	public IslandMap getIslandMap(int x, int z)
 	{
 		int id = Helper.combineCoords(x, z);
-
+		if(recentlyRequestedMaps.contains(id))
+			return EMPTY_MAP;
 		//First we try to load the map from disk if it exists
 		if(!islandCache.containsKey(id))
 		{
@@ -108,7 +126,7 @@ public class WorldGen implements IThreadCompleteListener
 		//If the map did not exist on disk then create it from scratch
 		if(!islandCache.containsKey(id))
 		{
-			if(FMLCommonHandler.instance().getEffectiveSide() == Side.CLIENT)
+			if(this == instanceClient)
 				createFakeMap(x, z);
 			else
 				createIsland(x, z);
@@ -119,34 +137,24 @@ public class WorldGen implements IThreadCompleteListener
 
 	private IslandMap createFakeMap(int x, int z)
 	{
-		long seed = world.getSeed()+Helper.combineCoords(x, z);
-		TFC.network.sendToServer(new SMapRequestPacket(x, z));
-		return createFakeMap(x, z, seed, false);
-	}
-
-	public IslandMap createFakeMap(int x, int z, long seed, boolean overwrite)
-	{
-		IslandParameters id = createParams(seed, x, z);
-		IslandMap mapgen = new IslandMap(ISLAND_SIZE, seed);
-		mapgen.newIsland(id);
-		mapgen.generateFake();
-		CachedIsland ci = new CachedIsland(mapgen);
-		if(!islandCache.containsKey(Helper.combineCoords(x, z)))
-			islandCache.put(Helper.combineCoords(x, z), ci);
-		else if(overwrite && islandCache.containsKey(Helper.combineCoords(x, z)))
+		if(recentlyRequestedMaps.contains(Helper.combineCoords(x, z)))
 		{
-			islandCache.remove(Helper.combineCoords(x, z));
-			islandCache.put(Helper.combineCoords(x, z), ci);
+			return EMPTY_MAP;
 		}
-		return mapgen;
+		TFC.network.sendToServer(new SMapRequestPacket(x, z));
+		recentlyRequestedMaps.add(Helper.combineCoords(x, z));
+		return EMPTY_MAP;
 	}
 
 	private IslandMap getMap(int x, int z)
 	{
 		int id = Helper.combineCoords(x, z);
 		CachedIsland ci = islandCache.get(id);
-		//Should only ever be 0 if this map was created but never accessed by the game.
-		if(ci.lastAccess == 0)
+
+		if(ci == null)
+			return EMPTY_MAP;
+		//Should only ever be 0 if this map was created but never accessed by the game. Don't queue maps if clientside
+		if(ci.lastAccess == 0 /*&& this != instanceClient*/)
 		{
 			//Add the neighbor maps to the mapQueue for generation in another thread
 			mapQueue.add(Helper.combineCoords(x+1, z));
@@ -162,6 +170,11 @@ public class WorldGen implements IThreadCompleteListener
 		return ci.getIslandMap();
 	}
 
+	public void enqueueIsland(int x, int z)
+	{
+		mapQueue.add(Helper.combineCoords(x, z));
+	}
+
 	public boolean isMapLoaded(int x, int z)
 	{
 		return isMapLoaded(Helper.combineCoords(x, z));
@@ -172,32 +185,51 @@ public class WorldGen implements IThreadCompleteListener
 		return islandCache.get(id) != null;
 	}
 
-	private IslandMap createIsland(int x, int z)
+	public IslandMap createIsland(int x, int z)
 	{
-		long seed = world.getSeed()+Helper.combineCoords(x, z);
-		IslandGenEvent.Pre preEvent = new IslandGenEvent.Pre(createParams(seed, x, z));
-		Global.EVENT_BUS.post(preEvent);
-		IslandMap mapgen = new IslandMap(ISLAND_SIZE, seed);
-		mapgen.newIsland(preEvent.params);
+		return createIsland(x, z, world.getSeed()+Helper.combineCoords(x, z), false);
+	}
 
+	public IslandMap createIsland(int x, int z, long seed, boolean overwrite)
+	{
+		Random rand = new Random(seed);
+		long seed2 = rand.nextLong();
+
+		if(islandCache.containsKey(Helper.combineCoords(x, z)))
+		{
+			if(islandCache.get(Helper.combineCoords(x, z)).getIslandMap().seed == seed2)
+				return islandCache.get(Helper.combineCoords(x, z)).getIslandMap();
+		}
+
+		IslandGenEvent.Pre preEvent = new IslandGenEvent.Pre(createParams(seed2, x, z));
+		Global.EVENT_BUS.post(preEvent);
+		IslandMap mapgen = new IslandMap(ISLAND_SIZE, seed2);
+		mapgen.newIsland(preEvent.params);
+		mapgen.generateFull();
+		//Make sure we don't access IslandData until after generateFull because the data may become lost
 		mapgen.getIslandData().islandLevel = Math.abs(x);
 		if(x == 0)
 		{
 			mapgen.getIslandData().unlockIsland();
 		}
-
-		mapgen.generateFull();
 		IslandGenEvent.Post postEvent = new IslandGenEvent.Post(mapgen);
 		Global.EVENT_BUS.post(postEvent);
 		CachedIsland ci = new CachedIsland(postEvent.islandMap);
-		saveMap(ci);
-		islandCache.put(Helper.combineCoords(x, z), ci);
+		if(this != instanceClient) saveMap(ci);
+
+		if(!islandCache.containsKey(Helper.combineCoords(x, z)))
+			islandCache.put(Helper.combineCoords(x, z), ci);
+		else if(overwrite && islandCache.containsKey(Helper.combineCoords(x, z)))
+		{
+			islandCache.remove(Helper.combineCoords(x, z));
+			islandCache.put(Helper.combineCoords(x, z), ci);
+		}
 		return ci.island;
 	}
 
 	private IslandParameters createParams(long seed, int x, int z)
 	{
-		IslandParameters id = new IslandParameters(seed, ISLAND_SIZE, 0.5, 0.3);
+		IslandParameters id = new IslandParameters(seed, ISLAND_SIZE, 0.5, 0.2);
 		Random r = new Random(seed);
 		id.setCoords(x, z);
 		int fcount = 2+r.nextInt(1)+r.nextInt(1);
@@ -288,7 +320,7 @@ public class WorldGen implements IThreadCompleteListener
 		}
 		else if(Math.abs(z) == 1)
 		{
-			t = r.nextBoolean() ? ClimateTemp.TEMPERATE : ClimateTemp.SUBTROPICAL;
+			t = r.nextInt(100) < 25 ? ClimateTemp.TEMPERATE : ClimateTemp.SUBTROPICAL;
 		}
 		else if(Math.abs(z) == 2)
 		{
@@ -296,7 +328,7 @@ public class WorldGen implements IThreadCompleteListener
 		}
 		else if(Math.abs(z) == 3)
 		{
-			t = r.nextBoolean() ? ClimateTemp.TEMPERATE : ClimateTemp.SUBPOLAR;
+			t = r.nextInt(100) < 25 ? ClimateTemp.TEMPERATE : ClimateTemp.SUBPOLAR;
 		}
 		else if(Math.abs(z) == 4)
 		{
@@ -305,7 +337,7 @@ public class WorldGen implements IThreadCompleteListener
 
 		id.setIslandTemp(t);
 
-		id.setFeatures(Feature.Valleys);
+		//id.setFeatures(Feature.Desert);
 
 
 		Moisture m = Moisture.fromVal(r.nextDouble());
@@ -334,17 +366,11 @@ public class WorldGen implements IThreadCompleteListener
 			spawnGroups.remove(group);
 		}
 
-		/**
-		 * Crops
-		 */
-		ArrayList<Crop> suitableCrops = Crop.getCropsForTemp(t);
-		int numCrops = 1 + (id.hasFeature(Feature.DiverseCrops) ? 1+r.nextInt(2) : 0);
-		numCrops = Math.min(numCrops, suitableCrops.size());
+		if(id.hasFeature(Feature.Desert))
+			id.setIslandMoisture(Moisture.LOW);
 
-		for(int i = 0; i < numCrops; i++)
-		{
-			id.addCrop(suitableCrops.get(r.nextInt(suitableCrops.size())));
-		}
+		if(id.hasFeature(Feature.TripleCaves) && id.hasFeature(Feature.DoubleCaves))
+			id.removeFeatures(Feature.DoubleCaves);
 
 		return id;
 	}
@@ -367,11 +393,12 @@ public class WorldGen implements IThreadCompleteListener
 		int key;
 		Set<Integer> keys = islandCache.keySet();
 		CachedIsland c;
+		int timer = 20000;
 		for(Iterator<Integer> iter = keys.iterator(); iter.hasNext();)
 		{
 			key = iter.next();
 			c = islandCache.get(key);
-			if(c != null && now-c.lastAccess > 20000)//20 seconds of no access will trim the map
+			if(c != null && now-c.lastAccess > timer)//X seconds of no access will trim the map
 			{
 				saveMap(c);
 				islandCache.remove(key);
@@ -385,6 +412,17 @@ public class WorldGen implements IThreadCompleteListener
 		{
 			File file1 = world.getSaveHandler().getMapFileFromName("Map " + island.island.getParams().getXCoord() + "," + 
 					island.island.getParams().getZCoord());
+
+			if(file1 == null && this == instanceClient)
+			{
+				File file = new File(".//mods//TFC2//cache//"+worldSeed+"//");
+				if(!file.exists())
+					file.mkdirs();
+				file1 = new File(".//mods//TFC2//cache//"+ worldSeed +"//Map " + island.island.getParams().getXCoord() + "," + 
+						island.island.getParams().getZCoord()+ ".dat");
+
+			}
+
 			if (file1 != null)
 			{
 				NBTTagCompound islandNBT = new NBTTagCompound();
@@ -395,6 +433,7 @@ public class WorldGen implements IThreadCompleteListener
 				island.island.getParams().writeToNBT(finalNBT);
 
 				finalNBT.setLong("lastAccess", island.lastAccess);
+				finalNBT.setString("TFC2 Version", Reference.ModVersion);
 
 				FileOutputStream fileoutputstream = new FileOutputStream(file1);
 				CompressedStreamTools.writeCompressed(finalNBT, fileoutputstream);
@@ -413,14 +452,27 @@ public class WorldGen implements IThreadCompleteListener
 		{
 			File file1 = world.getSaveHandler().getMapFileFromName("Map " + x + "," + z);
 
+			if(file1 == null && this == instanceClient)
+			{
+				file1 = new File(".//mods//tfc2//cache//"+ worldSeed +"//Map " + x + "," + z + ".dat");
+			}
+
 			if (file1 != null && file1.exists())
 			{
 				FileInputStream input = new FileInputStream(file1);
 				NBTTagCompound nbt = CompressedStreamTools.readCompressed(input);
 				input.close();
+				if(this == instanceClient)
+					if(!nbt.getString("TFC2 Version").equals(Reference.ModVersion))
+					{
+						file1.delete();
+						return null;
+					}
 				IslandParameters ip = new IslandParameters();
 				ip.readFromNBT(nbt);
 				long seed = world.getSeed()+Helper.combineCoords(x, z);
+				if(this == instanceClient)
+					seed = this.worldSeed + Helper.combineCoords(x, z);
 				IslandMap m = new IslandMap(ISLAND_SIZE, seed);
 				m.newIsland(ip);
 				m.readFromNBT(nbt.getCompoundTag("mapdata"));
@@ -444,7 +496,28 @@ public class WorldGen implements IThreadCompleteListener
 	{
 		File file1 = world.getSaveHandler().getMapFileFromName("Map " + x + "," + z);
 
+		if(this == instanceClient)
+		{
+			file1 = new File(".//mods//tfc2//cache//"+ worldSeed +"//Map " + x + "," + z + ".dat");
+		}
+
 		return (file1 != null && file1.exists());
+	}
+
+	public void forceBuildIsland(int x, int z, long seed)
+	{
+
+		for(int i = 0; i < buildThreads.length; i++)
+		{
+			if(buildThreads[i] == null)
+			{
+				buildThreads[i] = new ThreadBuildExact(i, "Map Build Thread: "+i, Helper.combineCoords(x, z), seed);
+				buildThreads[i].setPriority(2);
+				buildThreads[i].addListener(this);
+				buildThreads[i].start();
+				return;
+			}
+		}
 	}
 
 	public void buildFromQueue()
@@ -477,9 +550,9 @@ public class WorldGen implements IThreadCompleteListener
 
 	private class ThreadBuild extends Thread
 	{
-		private String threadName;
-		private Thread t;
-		private int id;
+		protected String threadName;
+		protected Thread t;
+		protected int id;
 		public final int threadID;
 
 		public ThreadBuild(int threadid, String n, int cantorizedID)
@@ -489,16 +562,16 @@ public class WorldGen implements IThreadCompleteListener
 			threadID = threadid;
 		}
 
-		private final Set<IThreadCompleteListener> listeners = new CopyOnWriteArraySet<IThreadCompleteListener>();
-		public final void addListener(final IThreadCompleteListener listener) 
+		private Set<IThreadCompleteListener> listeners = new CopyOnWriteArraySet<IThreadCompleteListener>();
+		public void addListener(final IThreadCompleteListener listener) 
 		{
 			listeners.add(listener);
 		}
-		public final void removeListener(final IThreadCompleteListener listener) 
+		public void removeListener(final IThreadCompleteListener listener) 
 		{
 			listeners.remove(listener);
 		}
-		private final void notifyListeners() 
+		private void notifyListeners() 
 		{
 			for (IThreadCompleteListener listener : listeners) 
 			{
@@ -538,6 +611,83 @@ public class WorldGen implements IThreadCompleteListener
 	public void notifyOfThreadComplete(Thread thread) 
 	{
 		buildThreads[((ThreadBuild)thread).threadID] = null;
+	}
+
+	private class ThreadBuildExact extends ThreadBuild
+	{
+		private long seed;
+
+		public ThreadBuildExact(int threadid, String n, int cantorizedID, long seed)
+		{
+			super(threadid, n, cantorizedID);
+			this.seed = seed;
+		}
+
+		private final Set<IThreadCompleteListener> listeners = new CopyOnWriteArraySet<IThreadCompleteListener>();
+		@Override
+		public void addListener(final IThreadCompleteListener listener) 
+		{
+			listeners.add(listener);
+		}
+		@Override
+		public void removeListener(final IThreadCompleteListener listener) 
+		{
+			listeners.remove(listener);
+		}
+		private void notifyListeners() 
+		{
+			for (IThreadCompleteListener listener : listeners) 
+			{
+				listener.notifyOfThreadComplete(this);
+			}
+		}
+
+		@Override
+		public void run()
+		{
+			try
+			{
+				if(doesMapExist(Helper.getXCoord(id),Helper.getYCoord(id)))
+				{
+					if(loadMap(Helper.getXCoord(id),Helper.getYCoord(id)) == null)
+						createIsland(Helper.getXCoord(id),Helper.getYCoord(id), seed, true);
+				}
+				else
+				{
+					createIsland(Helper.getXCoord(id),Helper.getYCoord(id), seed, true);
+				}
+			}
+			catch(Exception e)
+			{
+				e.printStackTrace();
+			}
+			finally 
+			{
+				int size = recentlyRequestedMaps.size();
+				for(int i = 0; i < size; i++)
+				{
+					if(recentlyRequestedMaps.get(i) == id)
+					{
+						recentlyRequestedMaps.remove(i);
+						size--;i--;
+					}
+				}
+				ClientRenderHandler.IsGeneratingFirstIsland  = false;
+				notifyListeners();
+			}
+
+			ClientRenderHandler.IsGeneratingFirstIsland  = false;
+		}
+
+		@Override
+		public void start()
+		{
+			if (t == null)
+			{
+				t = new Thread (this, threadName);
+				t.start();
+			}
+		}
 	}
 
 }

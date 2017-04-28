@@ -6,12 +6,15 @@ import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.properties.PropertyHelper;
 import net.minecraft.block.state.IBlockState;
+import net.minecraft.init.Blocks;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 
+import com.bioxx.tfc2.Core;
 import com.bioxx.tfc2.api.interfaces.IGravityBlock;
+import com.bioxx.tfc2.api.interfaces.ISupportBlock;
 import com.bioxx.tfc2.blocks.BlockTerra;
 import com.bioxx.tfc2.entity.EntityFallingBlockTFC;
 
@@ -37,9 +40,9 @@ public class BlockCollapsible extends BlockTerra
 	}
 
 	@Override
-	public void neighborChanged(IBlockState state, World world, BlockPos pos, Block blockIn)
+	public void neighborChanged(IBlockState state, World worldIn, BlockPos pos, Block blockIn, BlockPos fromPos)
 	{
-		world.scheduleUpdate(pos, this, tickRate(world));
+		((World)worldIn).scheduleUpdate(pos, this, tickRate((World)worldIn));
 	}
 
 	@Override
@@ -76,9 +79,11 @@ public class BlockCollapsible extends BlockTerra
 		{
 			world.setBlockToAir(pos);
 			EntityFallingBlockTFC entityfallingblock = new EntityFallingBlockTFC(world, pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D, stateNew);
+			entityfallingblock.shouldDropItem = false;
 			((IGravityBlock)getFallBlockType(state).getBlock()).onStartFalling(entityfallingblock);
-			world.spawnEntityInWorld(entityfallingblock);
-			onCreateFallingEntity(entityfallingblock, world, pos);
+			world.spawnEntity(entityfallingblock);
+			onCreateFallingEntity(entityfallingblock, state, world, pos);
+
 		}
 		else
 		{
@@ -86,7 +91,7 @@ public class BlockCollapsible extends BlockTerra
 		}
 	}
 
-	protected void onCreateFallingEntity(EntityFallingBlockTFC entity, World world, BlockPos pos)
+	protected void onCreateFallingEntity(EntityFallingBlockTFC entity, IBlockState state, World world, BlockPos pos)
 	{
 
 	}
@@ -113,11 +118,14 @@ public class BlockCollapsible extends BlockTerra
 		BlockPos pos1 = new BlockPos(pos.getX()+0.5, 0, pos.getZ()+0.5), pos2;
 
 		boolean isSupported = false;
-		float supportRange = getNaturalSupportRange(world, pos, state);
-		float supportRangeSq = supportRange*supportRange;
+		float supportRangeDefault = getNaturalSupportRange(world, pos, state);
+		float supportRangeSqDefault = supportRangeDefault*supportRangeDefault;
 
 		//If the block beneath this one is solid then we will assume for now that this block is naturally supported
-		if(world.getBlockState(pos.down()).getBlock().isBlockSolid(world, pos.down(), EnumFacing.UP))
+		IBlockState stateDown = world.getBlockState(pos.down());
+		if(this.canSupportFacing(state, world, pos, EnumFacing.DOWN) && 
+				((stateDown.getBlock() instanceof BlockCollapsible && ((BlockCollapsible)stateDown.getBlock()).canSupportFacing(stateDown, world, pos.down(), EnumFacing.UP)) || 
+						stateDown.getBlock().isBlockSolid(world, pos.down(), EnumFacing.UP)))
 			return true;
 		//If we fail the first case scenario then we will begin a recursive scan downward for each of the blocks surrounding this block
 
@@ -148,36 +156,55 @@ public class BlockCollapsible extends BlockTerra
 				break;
 			}
 
-			//If we move horizontally more than X blocks then stop scanning any further away
-			pos2 = new BlockPos(scanPos.getX()+0.5, 0, scanPos.getZ()+0.5);
-			double dist = pos1.distanceSq(pos2);
-			if(dist > supportRangeSq)
+
+			if(scanState.getBlock() instanceof BlockCollapsible/* && canBeSupportedBy(state, scanState)*/)
 			{
-				continue;
-			}
-			else if(canBeSupportedBy(state, scanState))
-			{
+				float supportRange = supportRangeDefault;
+				float supportRangeSq = supportRangeSqDefault;
+				if((!Core.isTerrain(state) && !Core.isTerrain(scanState)) || (Core.isTerrain(state) && Core.isTerrain(scanState)))
+				{
+					supportRange = Math.min(supportRange, ((BlockCollapsible)scanState.getBlock()).getNaturalSupportRange(world, pos, scanState));
+					supportRangeSq = supportRange*supportRange;
+				}
+
+				//If we move horizontally more than X blocks then stop scanning any further away
+				pos2 = new BlockPos(scanPos.getX()+0.5, 0, scanPos.getZ()+0.5);
+				double dist = pos1.distanceSq(pos2);
+				if(dist > supportRangeSq)
+				{
+					continue;
+				}
+
 				scanState2 = world.getBlockState(scanPos.down());
-				if(scanState2.getBlock().isSideSolid(scanState2, world, scanPos.down(), EnumFacing.UP))
+				if(scanState.getBlock().isSideSolid(scanState, world, scanPos, EnumFacing.DOWN) && 
+						canBeSupportedBy(scanState, scanState2) && scanState2.getBlock().isSideSolid(scanState2, world, scanPos.down(), EnumFacing.UP))
 				{
 					if(!scannedQueue.contains(scanPos.down()))
 						scanQueue.add(scanPos.down());
 				}
-				else
-				{
-					if(recievesHorizontalSupport(scanState, world, scanPos, EnumFacing.NORTH) && !scannedQueue.contains(scanPos.north()))
+				if(scanState.getBlock() instanceof BlockCollapsible)
+					if(((BlockCollapsible)scanState.getBlock()).recievesHorizontalSupport(scanState, world, scanPos, EnumFacing.NORTH) && notCurrentlyScanning((List<BlockPos>) scanQueue, scannedQueue, scanPos.north()))
 						scanQueue.add(scanPos.north());
-					if(recievesHorizontalSupport(scanState, world, scanPos, EnumFacing.SOUTH) && !scannedQueue.contains(scanPos.south()))
+				if(scanState.getBlock() instanceof BlockCollapsible)
+					if(((BlockCollapsible)scanState.getBlock()).recievesHorizontalSupport(scanState, world, scanPos, EnumFacing.SOUTH) && notCurrentlyScanning((List<BlockPos>) scanQueue, scannedQueue, scanPos.south()))
 						scanQueue.add(scanPos.south());
-					if(recievesHorizontalSupport(scanState, world, scanPos, EnumFacing.EAST) && !scannedQueue.contains(scanPos.east()))
+				if(scanState.getBlock() instanceof BlockCollapsible)
+					if(((BlockCollapsible)scanState.getBlock()).recievesHorizontalSupport(scanState, world, scanPos, EnumFacing.EAST) && notCurrentlyScanning((List<BlockPos>) scanQueue, scannedQueue, scanPos.east()))
 						scanQueue.add(scanPos.east());
-					if(recievesHorizontalSupport(scanState, world, scanPos,EnumFacing.WEST) && !scannedQueue.contains(scanPos.west()))
+				if(scanState.getBlock() instanceof BlockCollapsible)
+					if(((BlockCollapsible)scanState.getBlock()).recievesHorizontalSupport(scanState, world, scanPos,EnumFacing.WEST) && notCurrentlyScanning((List<BlockPos>) scanQueue, scannedQueue, scanPos.west()))
 						scanQueue.add(scanPos.west());
-				}
 			}
 		}
 
 		return isSupported;
+	}
+
+	private boolean notCurrentlyScanning(List<BlockPos> scanQueue, List<BlockPos> scannedQueue, BlockPos pos)
+	{
+		if(scanQueue.contains(pos) || scannedQueue.contains(pos))
+			return false;
+		return true;
 	}
 
 	/**
@@ -189,19 +216,31 @@ public class BlockCollapsible extends BlockTerra
 		BlockPos otherPos = pos.offset(facing);
 		IBlockState otherState = world.getBlockState(otherPos);
 
-		if(otherState.getBlock().isAir(otherState, world, otherPos) || !otherState.getBlock().isSideSolid(otherState, world, otherPos, facing.getOpposite()))
+		if(otherState.getBlock().isAir(otherState, world, otherPos))
 			return false;
-		//Both this block and the one in the facing direction need to have solid sides touching
-		if(!myState.getBlock().isSideSolid(myState, world, pos, facing))
+
+		//Both this block and the one in the facing direction need to be able to support each other
+		if(!((BlockCollapsible) myState.getBlock()).canSupportFacing(myState, world, pos, facing))
 			return false;
-		return true;
+
+		if(otherState.getBlock() instanceof BlockCollapsible) 
+		{
+			return ((BlockCollapsible) otherState.getBlock()).canSupportFacing(otherState, world, otherPos, facing.getOpposite());
+		}
+		else return otherState.getBlock().isSideSolid(otherState, world, otherPos, facing.getOpposite());
 	}
 
-
+	/**
+	 * @return Can this block attach to other blocks for support checks in this direction
+	 */
+	public boolean canSupportFacing(IBlockState myState, IBlockAccess world, BlockPos pos, EnumFacing facing)
+	{
+		return myState.getBlock().isSideSolid(myState, world, pos, facing);
+	}
 
 	public boolean canBeSupportedBy(IBlockState myState, IBlockState otherState)
 	{
-		if(otherState.getBlock() instanceof BlockCollapsible)
+		if(otherState.getBlock() == this || Core.isTerrain(otherState) || otherState.getBlock() instanceof ISupportBlock || otherState.getBlock() == Blocks.BEDROCK)
 			return true;
 		return false;
 	}

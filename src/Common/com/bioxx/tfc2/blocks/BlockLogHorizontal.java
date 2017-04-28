@@ -11,7 +11,6 @@ import net.minecraft.block.properties.PropertyHelper;
 import net.minecraft.block.properties.PropertyInteger;
 import net.minecraft.block.state.BlockStateContainer;
 import net.minecraft.block.state.IBlockState;
-import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
@@ -20,11 +19,12 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 
-import com.bioxx.tfc2.Core;
 import com.bioxx.tfc2.TFCBlocks;
 import com.bioxx.tfc2.api.interfaces.ISupportBlock;
 import com.bioxx.tfc2.api.types.WoodType;
 import com.bioxx.tfc2.blocks.terrain.BlockCollapsible;
+import com.bioxx.tfc2.core.TFCTabs;
+import com.bioxx.tfc2.entity.EntityFallingBlockTFC;
 
 public class BlockLogHorizontal extends BlockCollapsible implements ISupportBlock
 {
@@ -40,7 +40,7 @@ public class BlockLogHorizontal extends BlockCollapsible implements ISupportBloc
 	{
 		super(material, meta);
 		setSoundType(SoundType.WOOD);
-		this.setCreativeTab(CreativeTabs.BUILDING_BLOCKS);
+		this.setCreativeTab(TFCTabs.TFCBuilding);
 		this.setShowInCreative(false);
 	}
 
@@ -54,19 +54,27 @@ public class BlockLogHorizontal extends BlockCollapsible implements ISupportBloc
 	}
 
 	@Override
-	public boolean canBeSupportedBy(IBlockState myState, IBlockState otherState)
-	{
-		if(otherState.getBlock() == this || Core.isSoil(otherState) || Core.isStone(otherState) || otherState.getBlock() instanceof ISupportBlock)
-			return true;
-		return false;
-	}
-
-	@Override
 	public void createFallingEntity(World world, BlockPos pos, IBlockState state)
 	{
-		world.setBlockToAir(pos);
-		EntityItem ei = new EntityItem(world, pos.getX(), pos.getY(), pos.getZ(), new ItemStack(Items.STICK, 1+world.rand.nextInt(3)));
-		world.spawnEntityInWorld(ei);
+		if(world.rand.nextFloat() < 0.4)
+		{
+			world.setBlockToAir(pos);
+			EntityItem ei = new EntityItem(world, pos.getX(), pos.getY(), pos.getZ(), new ItemStack(Items.STICK, 1+world.rand.nextInt(3)));
+			world.spawnEntity(ei);
+		}
+		else
+		{
+			int x = 0;
+			int z = 0;
+			if(world.rand.nextFloat() < 0.25)
+			{
+				x = -1 + world.rand.nextInt(3);
+				z = -1 + world.rand.nextInt(3);
+			}
+			world.setBlockToAir(pos);
+			EntityFallingBlockTFC entityfallingblock = new EntityFallingBlockTFC(world, pos.getX() + 0.5D + x, pos.getY(), pos.getZ() + 0.5D + z, state);
+			world.spawnEntity(entityfallingblock);
+		}
 	}
 
 	@Override

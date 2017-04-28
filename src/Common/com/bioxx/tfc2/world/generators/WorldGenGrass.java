@@ -19,7 +19,10 @@ import com.bioxx.jmapgen.graph.Center;
 import com.bioxx.jmapgen.graph.Center.Marker;
 import com.bioxx.tfc2.Core;
 import com.bioxx.tfc2.TFCBlocks;
+import com.bioxx.tfc2.api.types.ClimateTemp;
 import com.bioxx.tfc2.api.types.Moisture;
+import com.bioxx.tfc2.blocks.BlockVegDesert;
+import com.bioxx.tfc2.blocks.BlockVegDesert.DesertVegType;
 import com.bioxx.tfc2.blocks.BlockVegetation;
 import com.bioxx.tfc2.blocks.BlockVegetation.VegType;
 
@@ -43,7 +46,9 @@ public class WorldGenGrass implements IWorldGenerator
 		IBlockState state = TFCBlocks.Vegetation.getDefaultState();
 		IslandMap map = Core.getMapForWorld(world, new BlockPos(chunkX, 0, chunkZ));
 		Moisture iMoisture = map.getParams().getIslandMoisture();
+		Moisture cMoisture;
 		Center closest;
+		float rand, m;
 		//Place grass
 		for(int x = 0; x < 16; x++)
 		{
@@ -51,41 +56,82 @@ public class WorldGenGrass implements IWorldGenerator
 			{
 				BlockPos bp = new BlockPos(chunkX+x, Core.getHeight(world, chunkX+x, chunkZ+z), chunkZ+z);
 				closest = map.getClosestCenter(bp);
-				if(world.getBlockState(bp).getBlock() != Blocks.AIR)
+				if(world.getBlockState(bp).getBlock() != Blocks.AIR || closest.biome == BiomeType.BEACH)
 				{
 					continue;
 				}
 
 				if(!map.getParams().hasFeature(Feature.Desert) && Core.isStone(world.getBlockState(bp.down())) && random.nextInt(3) == 0)
 				{
-					Core.setBlock(world, state.withProperty(BlockVegetation.META_PROPERTY, VegType.Grass1), bp, 2);
+					Core.setBlock(world, TFCBlocks.VegDesert.getDefaultState().withProperty(BlockVegDesert.META_PROPERTY, DesertVegType.ShortGrassSparse), bp, 2);
 				}
 				else if(Core.isGrass(world.getBlockState(bp.down())))
 				{
 					boolean genGrass = false;
 					if(closest.biome == BiomeType.MARSH || closest.biome == BiomeType.LAKE)
-						genGrass = random.nextInt(2) == 0;
+						genGrass = random.nextFloat() < 0.75;
 					else
-						genGrass = random.nextInt(5) == 0;
+						genGrass = random.nextFloat() < 0.25;
 					if(genGrass)
 					{
-						float m = Core.getMoistureFromChunk(c, bp);
-						if(random.nextFloat() > closest.getMoisture().getInverse())
+						cMoisture = closest.getMoisture();
+						rand = random.nextFloat();
+
+						VegType vt = VegType.Grass;
+						if(iMoisture == Moisture.LOW)
+						{
+							continue;
+						}
+						else if(iMoisture == Moisture.MEDIUM)
+						{
+							rand = random.nextFloat();
+							if(rand < 0.25)
+								vt = VegType.ShortGrass;
+							else if(rand < 0.5) vt = VegType.ShorterGrass;
+						}
+						else if(iMoisture == Moisture.HIGH)
+						{
+							rand = random.nextFloat();
+							if(rand < 0.25)
+								vt = VegType.ShortGrass;
+							else if(rand < 0.35) vt = VegType.ShorterGrass;
+						}
+
+						boolean tall = rand > cMoisture.getInverse()*2;
+
+						if(map.getParams().getIslandTemp().isWarmerThanOrEqual(ClimateTemp.SUBTROPICAL) && iMoisture.isGreaterThanOrEqual(Moisture.VERYHIGH))
+						{
+							if(vt == VegType.Grass) vt = VegType.GrassLush;
+							else if(vt == VegType.ShortGrass) vt = VegType.ShortGrassLush;
+							else if(vt == VegType.ShorterGrass) vt = VegType.ShorterGrassLush;
+
+							if(cMoisture.isGreaterThanOrEqual(Moisture.HIGH))
+							{
+								if(random.nextFloat() < cMoisture.getMoisture())
+								{
+									tall = false;
+									vt = VegType.Toquilla;
+								}
+							}
+						}
+
+						if(closest.hasMarker(Marker.Clearing) && iMoisture.isGreaterThanOrEqual(Moisture.VERYHIGH) && tall)
+						{
+							Core.setBlock(world, state.withProperty(BlockVegetation.META_PROPERTY, VegType.DoubleGrassBottomLush), bp, 2);
+							Core.setBlock(world, state.withProperty(BlockVegetation.META_PROPERTY, VegType.DoubleGrassTopLush), bp.up(), 2);
+						}
+						else if(closest.hasMarker(Marker.Clearing) && iMoisture.isGreaterThanOrEqual(Moisture.MEDIUM) && tall)
 						{
 							Core.setBlock(world, state.withProperty(BlockVegetation.META_PROPERTY, VegType.DoubleGrassBottom), bp, 2);
 							Core.setBlock(world, state.withProperty(BlockVegetation.META_PROPERTY, VegType.DoubleGrassTop), bp.up(), 2);
 						}
 						else
-							Core.setBlock(world, state.withProperty(BlockVegetation.META_PROPERTY, VegType.Grass0), bp, 2);
+						{
+							Core.setBlock(world, state.withProperty(BlockVegetation.META_PROPERTY, vt), bp, 2);
+						}
 					}
-				}
-				else if(Core.isSand(world.getBlockState(bp.down())) && !closest.hasAnyMarkersOf(Marker.Coast, Marker.CoastWater) && 
-						map.getParams().hasFeature(Feature.Desert) && random.nextInt(20) == 0)
-				{
-					world.setBlockState(bp, state.withProperty(BlockVegetation.META_PROPERTY, VegType.DeadBush), 2);
 				}
 			}
 		}
-
 	}
 }

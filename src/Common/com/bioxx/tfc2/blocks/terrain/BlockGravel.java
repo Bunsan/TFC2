@@ -6,13 +6,13 @@ import net.minecraft.block.properties.IProperty;
 import net.minecraft.block.properties.PropertyEnum;
 import net.minecraft.block.state.BlockStateContainer;
 import net.minecraft.block.state.IBlockState;
-import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
 import com.bioxx.tfc2.Core;
 import com.bioxx.tfc2.api.types.StoneType;
 import com.bioxx.tfc2.blocks.BlockGravity;
+import com.bioxx.tfc2.core.TFCTabs;
 import com.bioxx.tfc2.core.TFC_Sounds;
 import com.bioxx.tfc2.entity.EntityFallingBlockTFC;
 
@@ -23,7 +23,7 @@ public class BlockGravel extends BlockGravity
 	public BlockGravel()
 	{
 		super(Material.GROUND, META_PROPERTY);
-		this.setCreativeTab(CreativeTabs.BUILDING_BLOCKS);
+		this.setCreativeTab(TFCTabs.TFCBuilding);
 		setSoundType(SoundType.GROUND);
 	}
 	/*******************************************************************************
@@ -50,12 +50,13 @@ public class BlockGravel extends BlockGravity
 	@Override
 	protected void checkFallable(World worldIn, BlockPos pos, IBlockState state)
 	{
-		BlockPos slidePos = slideScan(worldIn, pos);
+		super.checkFallable(worldIn, pos, state);
+		/*BlockPos slidePos = slideScan(worldIn, pos);
 		if(slidePos != null && (slidePos.getY() >= 0))
 		{
-			worldIn.setBlockToAir(pos);
+			((World)worldIn).setBlockToAir(pos);
 			fall(worldIn, slidePos, state);
-		}
+		}*/
 	}
 
 	/*******************************************************************************
